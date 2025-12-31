@@ -1,0 +1,10 @@
+{
+  "comfyui_path": "",
+  "models_path": "",
+  "remote_profiles_url": "https://raw.githubusercontent.com/USERNAME/cindergrace_toolkit_profiles/main/",
+  "auto_sync_profiles": true,
+  "download_parallel": 2,
+  "show_file_sizes": true,
+  "confirm_delete": true,
+  "theme": "default"
+}

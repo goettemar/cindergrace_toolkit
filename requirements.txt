@@ -1,0 +1,8 @@
+# Cindergrace Toolkit Requirements
+
+# Core
+gradio>=4.0.0
+
+# Optional: For faster downloads
+# aiohttp>=3.9.0
+# aiofiles>=23.0.0

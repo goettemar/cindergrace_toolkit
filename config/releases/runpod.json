@@ -1,0 +1,15 @@
+{
+  "name": "RunPod Version",
+  "version": "1.0.0",
+  "target": "runpod",
+  "description": "Optimiert für RunPod mit Model Depot und System Info",
+  "addons": [
+    {"id": "model_depot", "enabled": true},
+    {"id": "system_info", "enabled": true}
+  ],
+  "remote_profiles": {
+    "enabled": true,
+    "url": "https://raw.githubusercontent.com/cindergrace/toolkit_profiles/main/profiles/",
+    "auto_sync": true
+  }
+}

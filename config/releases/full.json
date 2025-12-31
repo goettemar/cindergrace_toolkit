@@ -1,0 +1,11 @@
+{
+  "name": "Full Version",
+  "version": "1.0.0",
+  "target": "local",
+  "description": "Vollversion mit allen Addons für lokale Installation",
+  "addons": [
+    {"id": "model_depot", "enabled": true},
+    {"id": "workflow_manager", "enabled": true},
+    {"id": "system_info", "enabled": true}
+  ]
+}

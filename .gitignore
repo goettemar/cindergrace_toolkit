@@ -1,0 +1,36 @@
+# User config (not committed to git)
+.config/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+profiles/.cache/
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+coverage.xml

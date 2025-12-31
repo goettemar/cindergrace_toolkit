@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "updated": "2025-01-01",
+  "profiles": [
+    {
+      "id": "svi_wan22_bf16",
+      "name": "SVI WAN 2.2 (bf16)",
+      "description": "Smooth Video Interpolation - 24GB+ VRAM",
+      "url": "svi_wan22_bf16.json",
+      "version": "1.0.0",
+      "tags": ["video", "wan", "svi", "bf16"]
+    },
+    {
+      "id": "wan22_5b_i2v",
+      "name": "WAN 2.2 5B I2V",
+      "description": "Image to Video mit WAN 2.2 5B - 12GB VRAM",
+      "url": "wan22_5b_i2v.json",
+      "version": "1.0.0",
+      "tags": ["video", "wan", "i2v"]
+    },
+    {
+      "id": "flux_dev_lora",
+      "name": "FLUX.1 Dev + LoRA",
+      "description": "FLUX.1 Dev für Bildgenerierung mit LoRA",
+      "url": "flux_dev_lora.json",
+      "version": "1.0.0",
+      "tags": ["image", "flux", "lora"]
+    }
+  ]
+}

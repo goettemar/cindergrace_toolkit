@@ -1,0 +1,9 @@
+{
+  "name": "Minimal Version",
+  "version": "1.0.0",
+  "target": "any",
+  "description": "Minimale Version nur mit Model Depot",
+  "addons": [
+    {"id": "model_depot", "enabled": true}
+  ]
+}

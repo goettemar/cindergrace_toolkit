@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "paths": {
+    "comfyui": {
+      "local": "~/ComfyUI",
+      "runpod": "/workspace/ComfyUI",
+      "colab": "/content/ComfyUI"
+    },
+    "workflows": {
+      "local": "{comfyui}/user/default/workflows",
+      "runpod": "{comfyui}/user/default/workflows",
+      "colab": "{comfyui}/user/default/workflows"
+    },
+    "models": {
+      "local": "{comfyui}/models",
+      "runpod": "{comfyui}/models",
+      "colab": "{comfyui}/models"
+    },
+    "backup": {
+      "local": "",
+      "runpod": "",
+      "colab": ""
+    }
+  },
+  "workflow_pattern": "gc*.json",
+  "update": {
+    "enabled": true,
+    "auto_update": true,
+    "repository": "https://github.com/cindergrace/cindergrace_toolkit.git",
+    "branch": "main",
+    "check_on_start": true
+  },
+  "ui": {
+    "port": 7861,
+    "theme": "soft",
+    "show_system_info": true
+  }
+}
