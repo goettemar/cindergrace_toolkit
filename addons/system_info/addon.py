@@ -2,11 +2,15 @@
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import gradio as gr
 
 from core.base_addon import BaseAddon
+
+
+PROJECT_DIR = Path(__file__).parent.parent.parent
 
 
 class SystemInfoAddon(BaseAddon):
@@ -113,9 +117,8 @@ class SystemInfoAddon(BaseAddon):
         """Detect current environment."""
         output = "### Umgebung\n\n"
 
-        if os.path.exists("/workspace") and os.path.exists("/runpod-volume"):
+        if os.environ.get("RUNPOD_POD_ID") or (os.path.exists("/workspace") and not os.path.exists("/content")):
             output += "**Plattform:** 🚀 RunPod\n"
-            # Check for pod info
             pod_id = os.environ.get("RUNPOD_POD_ID", "unbekannt")
             output += f"- Pod ID: `{pod_id}`\n"
         elif os.path.exists("/content") and "COLAB_GPU" in os.environ:
@@ -123,15 +126,93 @@ class SystemInfoAddon(BaseAddon):
         else:
             output += "**Plattform:** 🖥️ Lokal\n"
 
-        # Python version
-        import sys
         output += f"- Python: {sys.version.split()[0]}\n"
 
-        # CUDA
         cuda_version = os.environ.get("CUDA_VERSION", "unbekannt")
         output += f"- CUDA: {cuda_version}\n"
 
         return output
+
+    def get_toolkit_info(self) -> str:
+        """Get toolkit version and git status."""
+        output = "### Toolkit\n\n"
+
+        try:
+            # Get current commit
+            result = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            commit = result.stdout.strip() if result.returncode == 0 else "unknown"
+
+            # Get branch
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            branch = result.stdout.strip() if result.returncode == 0 else "unknown"
+
+            output += f"- Branch: `{branch}`\n"
+            output += f"- Commit: `{commit}`\n"
+
+            # Check for updates
+            subprocess.run(
+                ["git", "fetch", "--quiet"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                timeout=30,
+            )
+
+            result = subprocess.run(
+                ["git", "status", "-uno"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if "behind" in result.stdout:
+                output += "- Status: ⚠️ **Update verfügbar**\n"
+            else:
+                output += "- Status: ✅ Aktuell\n"
+
+        except Exception as e:
+            output += f"- Error: {e}\n"
+
+        return output
+
+    def upgrade_toolkit(self) -> str:
+        """Pull latest changes from git."""
+        try:
+            result = subprocess.run(
+                ["git", "pull", "--ff-only"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if result.returncode == 0:
+                return f"✅ Update erfolgreich:\n{result.stdout}"
+            else:
+                return f"❌ Update fehlgeschlagen:\n{result.stderr}"
+        except Exception as e:
+            return f"❌ Fehler: {e}"
+
+    def restart_app(self) -> None:
+        """Restart the toolkit application."""
+        import threading
+
+        def delayed_restart():
+            import time
+            time.sleep(1)
+            os.execv(sys.executable, [sys.executable, str(PROJECT_DIR / "app.py")] + sys.argv[1:])
+
+        threading.Thread(target=delayed_restart, daemon=True).start()
 
     def render(self) -> gr.Blocks:
         """Render the System Info UI."""
@@ -139,7 +220,9 @@ class SystemInfoAddon(BaseAddon):
         with gr.Blocks() as ui:
             gr.Markdown("## 💻 System Info")
 
-            refresh_btn = gr.Button("🔄 Aktualisieren", variant="primary")
+            with gr.Row():
+                refresh_btn = gr.Button("🔄 Aktualisieren", variant="primary", scale=2)
+                upgrade_btn = gr.Button("⬆️ Upgrade & Restart", variant="secondary", scale=1)
 
             with gr.Row():
                 with gr.Column():
@@ -153,17 +236,41 @@ class SystemInfoAddon(BaseAddon):
                 with gr.Column():
                     env_info = gr.Markdown(self.get_environment())
 
+            with gr.Row():
+                with gr.Column():
+                    toolkit_info = gr.Markdown(self.get_toolkit_info())
+                with gr.Column():
+                    upgrade_output = gr.Textbox(
+                        label="Upgrade Status",
+                        lines=4,
+                        interactive=False,
+                        value="",
+                    )
+
             def on_refresh():
                 return (
                     self.get_gpu_info(),
                     self.get_memory_info(),
                     self.get_disk_info(),
                     self.get_environment(),
+                    self.get_toolkit_info(),
                 )
+
+            def on_upgrade():
+                result = self.upgrade_toolkit()
+                if "erfolgreich" in result:
+                    self.restart_app()
+                    return result + "\n\n🔄 Neustart in 1 Sekunde..."
+                return result
 
             refresh_btn.click(
                 on_refresh,
-                outputs=[gpu_info, mem_info, disk_info, env_info],
+                outputs=[gpu_info, mem_info, disk_info, env_info, toolkit_info],
+            )
+
+            upgrade_btn.click(
+                on_upgrade,
+                outputs=[upgrade_output],
             )
 
         return ui
