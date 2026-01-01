@@ -278,6 +278,102 @@ class CustomNodesManagerAddon(BaseAddon):
             choices.append((f"{name} ({node_id})", node_id))
         return sorted(choices, key=lambda x: x[0])
 
+    def _get_orphaned_nodes(self) -> List[Dict[str, str]]:
+        """Find nodes on disk that are not in config."""
+        orphaned = []
+
+        if not self._custom_nodes_path or not self._custom_nodes_path.exists():
+            return orphaned
+
+        # Get all folder names from config
+        config_folders = set()
+        for node_data in self._nodes_config.get("nodes", []):
+            folder = node_data.get("folder") or self._get_folder_name(node_data.get("url", ""))
+            config_folders.add(folder)
+
+        # Scan custom_nodes directory
+        for item in self._custom_nodes_path.iterdir():
+            if item.is_dir() and not item.name.startswith(".") and item.name != "__pycache__":
+                if item.name not in config_folders:
+                    # Try to get git remote URL
+                    git_url = ""
+                    try:
+                        result = subprocess.run(
+                            ["git", "remote", "get-url", "origin"],
+                            cwd=item,
+                            capture_output=True,
+                            text=True,
+                            timeout=5
+                        )
+                        if result.returncode == 0:
+                            git_url = result.stdout.strip()
+                    except Exception:
+                        pass
+
+                    orphaned.append({
+                        "folder": item.name,
+                        "url": git_url,
+                        "path": str(item)
+                    })
+
+        return orphaned
+
+    def _restore_orphaned_node(self, folder: str) -> str:
+        """Re-add an orphaned node to config."""
+        orphaned = self._get_orphaned_nodes()
+
+        for node in orphaned:
+            if node["folder"] == folder:
+                # Generate node entry
+                name = folder.replace("-", " ").replace("_", " ").title()
+                node_id = folder.lower().replace(" ", "-")
+
+                new_node = {
+                    "id": node_id,
+                    "name": name,
+                    "url": node["url"] or f"https://github.com/unknown/{folder}",
+                    "description": "Restored from disk",
+                    "enabled": True,
+                    "folder": folder
+                }
+
+                self._nodes_config.setdefault("nodes", []).append(new_node)
+                self._save_nodes_config()
+                return f"✅ Restored: {name}"
+
+        return f"❌ Not found: {folder}"
+
+    def _delete_orphaned_node(self, folder: str) -> str:
+        """Delete an orphaned node from disk."""
+        if not self._custom_nodes_path:
+            return "❌ ComfyUI path not found"
+
+        node_path = self._custom_nodes_path / folder
+        if not node_path.exists():
+            return f"❌ Folder not found: {folder}"
+
+        # Safety check - must be in custom_nodes
+        if self._custom_nodes_path not in node_path.parents and node_path.parent != self._custom_nodes_path:
+            return "❌ Invalid path"
+
+        try:
+            import shutil
+            shutil.rmtree(node_path)
+            return f"✅ Deleted: {folder}"
+        except Exception as e:
+            return f"❌ Error: {e}"
+
+    def _get_orphaned_choices(self) -> List[Tuple[str, str]]:
+        """Get orphaned node choices for dropdown."""
+        orphaned = self._get_orphaned_nodes()
+        choices = []
+        for node in orphaned:
+            label = f"{node['folder']}"
+            if node['url']:
+                label += f" ({node['url'].split('/')[-1].replace('.git', '')})"
+            choices.append((label, node['folder']))
+        return choices
+
     def _get_error_logs(self) -> str:
         """Read error logs from sync and startup."""
         logs = []
@@ -416,6 +512,34 @@ class CustomNodesManagerAddon(BaseAddon):
                 remove_output = gr.Textbox(label="Result", lines=1, interactive=False, scale=2)
 
             # =============================================
+            # Orphaned Nodes (on disk but not in config)
+            # =============================================
+            gr.Markdown("---")
+            gr.Markdown("### 👻 Verwaiste Nodes")
+            gr.Markdown("*Nodes auf der Disk die nicht in der Config sind (z.B. nach 'Remove from Config')*")
+
+            orphaned_choices = self._get_orphaned_choices()
+            orphaned_count = len(orphaned_choices)
+
+            orphaned_info = gr.Markdown(
+                f"**Gefunden:** {orphaned_count} verwaiste Node(s)" if orphaned_count > 0 else "✅ Keine verwaisten Nodes"
+            )
+
+            with gr.Row(visible=orphaned_count > 0) as orphaned_row:
+                orphaned_dropdown = gr.Dropdown(
+                    label="Verwaister Node",
+                    choices=orphaned_choices,
+                    value=None,
+                    scale=2
+                )
+                restore_btn = gr.Button("♻️ Wiederherstellen", variant="primary", scale=1)
+                delete_disk_btn = gr.Button("🗑️ Von Disk löschen", variant="stop", scale=1)
+
+            orphaned_output = gr.Textbox(label="Ergebnis", lines=1, interactive=False, visible=orphaned_count > 0)
+
+            refresh_orphaned_btn = gr.Button("🔄 Verwaiste Nodes suchen")
+
+            # =============================================
             # Error Logs
             # =============================================
             gr.Markdown("---")
@@ -497,6 +621,49 @@ class CustomNodesManagerAddon(BaseAddon):
                     gr.update(choices=choices, value=None)   # Update remove dropdown
                 )
 
+            def on_refresh_orphaned():
+                orphaned = self._get_orphaned_choices()
+                count = len(orphaned)
+                info_text = f"**Gefunden:** {count} verwaiste Node(s)" if count > 0 else "✅ Keine verwaisten Nodes"
+                return (
+                    info_text,
+                    gr.update(choices=orphaned, value=None, visible=count > 0),
+                    gr.update(visible=count > 0)
+                )
+
+            def on_restore_orphaned(folder):
+                if not folder:
+                    return "Bitte Node auswählen", gr.update(), gr.update(), self._get_nodes_table(), gr.update(), gr.update()
+                result = self._restore_orphaned_node(folder)
+                self._load_nodes_config()
+                # Refresh all lists
+                orphaned = self._get_orphaned_choices()
+                count = len(orphaned)
+                info_text = f"**Gefunden:** {count} verwaiste Node(s)" if count > 0 else "✅ Keine verwaisten Nodes"
+                choices = self._get_node_choices()
+                return (
+                    result,
+                    info_text,
+                    gr.update(choices=orphaned, value=None),
+                    self._get_nodes_table(),
+                    gr.update(choices=choices),
+                    gr.update(choices=choices)
+                )
+
+            def on_delete_orphaned(folder):
+                if not folder:
+                    return "Bitte Node auswählen", gr.update(), gr.update()
+                result = self._delete_orphaned_node(folder)
+                # Refresh orphaned list
+                orphaned = self._get_orphaned_choices()
+                count = len(orphaned)
+                info_text = f"**Gefunden:** {count} verwaiste Node(s)" if count > 0 else "✅ Keine verwaisten Nodes"
+                return (
+                    result,
+                    info_text,
+                    gr.update(choices=orphaned, value=None)
+                )
+
             # === Wire Events ===
             sync_btn.click(
                 on_sync,
@@ -541,6 +708,23 @@ class CustomNodesManagerAddon(BaseAddon):
                 on_remove,
                 inputs=[remove_dropdown],
                 outputs=[remove_output, nodes_table, toggle_dropdown, remove_dropdown]
+            )
+
+            refresh_orphaned_btn.click(
+                on_refresh_orphaned,
+                outputs=[orphaned_info, orphaned_dropdown, orphaned_output]
+            )
+
+            restore_btn.click(
+                on_restore_orphaned,
+                inputs=[orphaned_dropdown],
+                outputs=[orphaned_output, orphaned_info, orphaned_dropdown, nodes_table, toggle_dropdown, remove_dropdown]
+            )
+
+            delete_disk_btn.click(
+                on_delete_orphaned,
+                inputs=[orphaned_dropdown],
+                outputs=[orphaned_output, orphaned_info, orphaned_dropdown]
             )
 
         return ui
