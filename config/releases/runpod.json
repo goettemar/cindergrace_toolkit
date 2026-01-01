@@ -5,6 +5,7 @@
   "description": "Optimiert für RunPod mit Model Depot, Custom Nodes und System Info",
   "addons": [
     {"id": "model_depot", "enabled": true},
+    {"id": "workflow_manager", "enabled": true},
     {"id": "custom_nodes_manager", "enabled": true},
     {"id": "system_info", "enabled": true}
   ],
