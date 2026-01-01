@@ -251,7 +251,7 @@ class SystemInfoAddon(BaseAddon):
             def on_upgrade():
                 result = self.upgrade_toolkit()
                 if "erfolgreich" in result:
-                    return result + "\n\n✅ Update fertig! Zum Neustarten:\npkill -f app.py && python app.py --port 7861 &"
+                    return result + "\n\n✅ Update fertig! Zum Neustarten:\npkill -f app.py; sleep 2; cd /workspace/cindergrace_toolkit && python app.py --port 7861 &"
                 return result
 
             refresh_btn.click(
