@@ -45,6 +45,7 @@ class CustomNodesManagerAddon(BaseAddon):
     CONFIG_DIR = PROJECT_DIR / "config"
     USER_CONFIG_DIR = PROJECT_DIR / ".config"
     SCRIPTS_DIR = PROJECT_DIR / "scripts"
+    LOGS_DIR = PROJECT_DIR / "logs"
 
     def __init__(self):
         super().__init__()
@@ -277,6 +278,51 @@ class CustomNodesManagerAddon(BaseAddon):
             choices.append((f"{name} ({node_id})", node_id))
         return sorted(choices, key=lambda x: x[0])
 
+    def _get_error_logs(self) -> str:
+        """Read error logs from sync and startup."""
+        logs = []
+
+        # Read sync errors
+        sync_log = self.LOGS_DIR / "sync_errors.log"
+        if sync_log.exists():
+            try:
+                content = sync_log.read_text(encoding="utf-8").strip()
+                if content:
+                    logs.append("=== Sync Errors ===\n" + content)
+            except Exception:
+                pass
+
+        # Read startup errors
+        startup_log = self.LOGS_DIR / "startup_errors.log"
+        if startup_log.exists():
+            try:
+                content = startup_log.read_text(encoding="utf-8").strip()
+                if content:
+                    logs.append("=== Startup Errors ===\n" + content)
+            except Exception:
+                pass
+
+        if not logs:
+            return "No errors logged."
+
+        return "\n\n".join(logs)
+
+    def _clear_error_logs(self) -> str:
+        """Clear all error logs."""
+        cleared = []
+        for log_name in ["sync_errors.log", "startup_errors.log"]:
+            log_path = self.LOGS_DIR / log_name
+            if log_path.exists():
+                try:
+                    log_path.unlink()
+                    cleared.append(log_name)
+                except Exception:
+                    pass
+
+        if cleared:
+            return f"Cleared: {', '.join(cleared)}"
+        return "No logs to clear."
+
     def render(self) -> gr.Blocks:
         """Render the Custom Nodes Manager UI."""
 
@@ -369,12 +415,31 @@ class CustomNodesManagerAddon(BaseAddon):
                 remove_btn = gr.Button("🗑️ Remove", variant="stop", scale=1)
                 remove_output = gr.Textbox(label="Result", lines=1, interactive=False, scale=2)
 
+            # =============================================
+            # Error Logs
+            # =============================================
+            gr.Markdown("---")
+            gr.Markdown("### 📋 Error Logs")
+            gr.Markdown("*Errors from sync and startup operations*")
+
+            error_logs = gr.Textbox(
+                label="Errors",
+                value=self._get_error_logs(),
+                lines=6,
+                interactive=False
+            )
+
+            with gr.Row():
+                refresh_logs_btn = gr.Button("🔄 Refresh Logs", scale=1)
+                clear_logs_btn = gr.Button("🗑️ Clear Logs", scale=1)
+                clear_logs_output = gr.Textbox(label="", lines=1, interactive=False, scale=2)
+
             # === Event Handlers ===
 
             def on_sync(remove_disabled):
                 result = self._run_sync(remove_disabled)
                 self._load_nodes_config()  # Reload config after sync
-                return result, self._get_nodes_table()
+                return result, self._get_nodes_table(), self._get_error_logs()
 
             def on_refresh():
                 self._load_nodes_config()
@@ -382,8 +447,16 @@ class CustomNodesManagerAddon(BaseAddon):
                 return (
                     self._get_nodes_table(),
                     gr.update(choices=choices),
-                    gr.update(choices=choices)
+                    gr.update(choices=choices),
+                    self._get_error_logs()
                 )
+
+            def on_refresh_logs():
+                return self._get_error_logs()
+
+            def on_clear_logs():
+                result = self._clear_error_logs()
+                return self._get_error_logs(), result
 
             def on_enable(node_id):
                 if not node_id:
@@ -428,12 +501,22 @@ class CustomNodesManagerAddon(BaseAddon):
             sync_btn.click(
                 on_sync,
                 inputs=[remove_disabled_cb],
-                outputs=[sync_output, nodes_table]
+                outputs=[sync_output, nodes_table, error_logs]
             )
 
             refresh_btn.click(
                 on_refresh,
-                outputs=[nodes_table, toggle_dropdown, remove_dropdown]
+                outputs=[nodes_table, toggle_dropdown, remove_dropdown, error_logs]
+            )
+
+            refresh_logs_btn.click(
+                on_refresh_logs,
+                outputs=[error_logs]
+            )
+
+            clear_logs_btn.click(
+                on_clear_logs,
+                outputs=[error_logs, clear_logs_output]
             )
 
             enable_btn.click(

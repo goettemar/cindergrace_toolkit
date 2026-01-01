@@ -16,7 +16,7 @@
       "name": "WAN Video Wrapper",
       "url": "https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
       "description": "WAN 2.2 Video generation support",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "comfyui-florence2",
@@ -24,14 +24,14 @@
       "url": "https://github.com/kijai/ComfyUI-Florence2.git",
       "folder": "comfyui-florence2",
       "description": "Image analysis with Florence2",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "comfyui-gguf",
       "name": "GGUF Support",
       "url": "https://github.com/city96/ComfyUI-GGUF.git",
       "description": "Quantized GGUF model support",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "comfyui-custom-scripts",
@@ -39,7 +39,7 @@
       "url": "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git",
       "folder": "comfyui-custom-scripts",
       "description": "ShowText and other utilities",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "comfyui-videohelpersuite",
@@ -47,7 +47,7 @@
       "url": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
       "folder": "comfyui-videohelpersuite",
       "description": "Video loading, combining, previewing",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "comfyui-kjnodes",
@@ -55,7 +55,7 @@
       "url": "https://github.com/kijai/ComfyUI-KJNodes.git",
       "folder": "comfyui-kjnodes",
       "description": "Various utility nodes by Kijai",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "comfyui-essentials",
@@ -63,7 +63,7 @@
       "url": "https://github.com/cubiq/ComfyUI_essentials.git",
       "folder": "comfyui_essentials",
       "description": "Essential utility nodes",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "comfyui-eclipse",
@@ -71,14 +71,14 @@
       "url": "https://github.com/ryanontheinside/ComfyUI_Eclipse.git",
       "folder": "ComfyUI_Eclipse",
       "description": "Eclipse nodes",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "rgthree-comfy",
       "name": "RGThree Nodes",
       "url": "https://github.com/rgthree/rgthree-comfy.git",
       "description": "Quality of life nodes",
-      "enabled": true
+      "enabled": false
     }
   ]
 }

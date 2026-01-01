@@ -7,6 +7,8 @@ Usage:
 
 This script reads data/custom_nodes.json and ensures all enabled nodes
 are installed and up-to-date in the ComfyUI custom_nodes directory.
+
+Errors are logged to logs/sync_errors.log for the toolkit to display.
 """
 
 import argparse
@@ -14,6 +16,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -23,6 +26,32 @@ SCRIPT_DIR = Path(__file__).parent
 PROJECT_DIR = SCRIPT_DIR.parent
 DATA_DIR = PROJECT_DIR / "data"
 CONFIG_DIR = PROJECT_DIR / "config"
+LOGS_DIR = PROJECT_DIR / "logs"
+
+# Ensure logs directory exists
+LOGS_DIR.mkdir(exist_ok=True)
+ERROR_LOG = LOGS_DIR / "sync_errors.log"
+
+
+def log_error(node_name: str, operation: str, error_msg: str) -> None:
+    """Log error to sync_errors.log with timestamp."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_line = f"[{timestamp}] [{operation}] {node_name}: {error_msg}\n"
+
+    try:
+        with open(ERROR_LOG, "a", encoding="utf-8") as f:
+            f.write(log_line)
+    except Exception:
+        pass  # Don't fail if logging fails
+
+
+def clear_error_log() -> None:
+    """Clear the error log at the start of a sync."""
+    try:
+        if ERROR_LOG.exists():
+            ERROR_LOG.unlink()
+    except Exception:
+        pass
 
 
 def load_custom_nodes_config() -> Dict:
@@ -87,7 +116,12 @@ def get_node_folder_name(url: str, folder_override: str = None) -> str:
     return name
 
 
-def run_command(cmd: List[str], cwd: Optional[Path] = None, quiet: bool = False) -> Tuple[int, str]:
+def run_command(
+    cmd: List[str],
+    cwd: Optional[Path] = None,
+    quiet: bool = False,
+    timeout: int = 120
+) -> Tuple[int, str]:
     """Run a shell command and return (returncode, output)."""
     try:
         result = subprocess.run(
@@ -95,7 +129,7 @@ def run_command(cmd: List[str], cwd: Optional[Path] = None, quiet: bool = False)
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=timeout
         )
         output = result.stdout + result.stderr
         if not quiet and result.returncode != 0:
@@ -103,7 +137,7 @@ def run_command(cmd: List[str], cwd: Optional[Path] = None, quiet: bool = False)
             print(f"      Output: {output[:500]}")
         return result.returncode, output
     except subprocess.TimeoutExpired:
-        return -1, "Command timed out"
+        return -1, f"Command timed out after {timeout}s"
     except Exception as e:
         return -1, str(e)
 
@@ -125,38 +159,52 @@ def install_requirements(node_path: Path, quiet: bool = False) -> bool:
     return code == 0
 
 
-def clone_node(url: str, target_dir: Path, quiet: bool = False) -> bool:
-    """Clone a git repository."""
+def clone_node(url: str, target_dir: Path, node_name: str = "", quiet: bool = False) -> bool:
+    """Clone a git repository with error logging."""
     if not quiet:
         print(f"      Cloning from {url}...")
 
-    code, _ = run_command(
-        ["git", "clone", "--quiet", url, str(target_dir)],
-        quiet=quiet
+    code, output = run_command(
+        ["git", "clone", "--quiet", "--depth", "1", url, str(target_dir)],
+        quiet=quiet,
+        timeout=180  # 3 minutes for clone
     )
 
-    if code == 0:
-        install_requirements(target_dir, quiet)
+    if code != 0:
+        error_msg = output[:200] if output else "Unknown error"
+        log_error(node_name or url, "CLONE", error_msg)
+        if not quiet:
+            print(f"      [ERROR] Clone failed: {error_msg[:100]}")
+        return False
 
-    return code == 0
+    install_requirements(target_dir, quiet)
+    return True
 
 
-def update_node(node_path: Path, quiet: bool = False) -> Tuple[bool, bool]:
+def update_node(node_path: Path, node_name: str = "", quiet: bool = False) -> Tuple[bool, bool]:
     """
-    Update a node via git pull.
+    Update a node via git pull with error logging.
     Returns: (success, was_updated)
     """
-    # Check for updates
-    code, _ = run_command(["git", "fetch", "--quiet"], cwd=node_path, quiet=True)
+    name = node_name or node_path.name
+
+    # Check for updates with timeout
+    code, output = run_command(
+        ["git", "fetch", "--quiet"],
+        cwd=node_path,
+        quiet=True,
+        timeout=60
+    )
     if code != 0:
+        log_error(name, "FETCH", output[:200] if output else "Fetch failed")
         return False, False
 
     # Get local and remote commits
-    code, local = run_command(["git", "rev-parse", "HEAD"], cwd=node_path, quiet=True)
+    code, local = run_command(["git", "rev-parse", "HEAD"], cwd=node_path, quiet=True, timeout=10)
     if code != 0:
         return False, False
 
-    code, remote = run_command(["git", "rev-parse", "@{u}"], cwd=node_path, quiet=True)
+    code, remote = run_command(["git", "rev-parse", "@{u}"], cwd=node_path, quiet=True, timeout=10)
     if code != 0:
         # No upstream, skip update
         return True, False
@@ -168,11 +216,17 @@ def update_node(node_path: Path, quiet: bool = False) -> Tuple[bool, bool]:
     if not quiet:
         print(f"      Updating...")
 
-    code, _ = run_command(["git", "pull", "--quiet"], cwd=node_path, quiet=quiet)
+    code, output = run_command(
+        ["git", "pull", "--quiet"],
+        cwd=node_path,
+        quiet=quiet,
+        timeout=120
+    )
     if code == 0:
         install_requirements(node_path, quiet)
         return True, True
 
+    log_error(name, "PULL", output[:200] if output else "Pull failed")
     return False, False
 
 
@@ -202,6 +256,10 @@ def sync_nodes(
 
     Returns: {"installed": n, "updated": n, "removed": n, "skipped": n, "errors": n}
     """
+    # Clear error log at the start of each sync
+    if not dry_run:
+        clear_error_log()
+
     config = load_custom_nodes_config()
     nodes = config.get("nodes", [])
 
@@ -241,7 +299,7 @@ def sync_nodes(
                         print(f"      Would check for updates")
                     stats["skipped"] += 1
                 else:
-                    success, was_updated = update_node(node_path, quiet)
+                    success, was_updated = update_node(node_path, name, quiet)
                     if success:
                         if was_updated:
                             if not quiet:
@@ -252,6 +310,8 @@ def sync_nodes(
                                 print(f"      Already up-to-date")
                             stats["skipped"] += 1
                     else:
+                        if not quiet:
+                            print(f"      [ERROR] Update failed, continuing...")
                         stats["errors"] += 1
             else:
                 # Install new node
@@ -263,11 +323,13 @@ def sync_nodes(
                         print(f"      Would clone from {url}")
                     stats["skipped"] += 1
                 else:
-                    if clone_node(url, node_path, quiet):
+                    if clone_node(url, node_path, name, quiet):
                         if not quiet:
                             print(f"      Installed!")
                         stats["installed"] += 1
                     else:
+                        if not quiet:
+                            print(f"      [ERROR] Install failed, continuing...")
                         stats["errors"] += 1
         else:
             # Node is disabled
