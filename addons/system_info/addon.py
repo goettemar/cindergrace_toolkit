@@ -87,26 +87,28 @@ class SystemInfoAddon(BaseAddon):
     def get_disk_info(self) -> str:
         """Get disk space information."""
         try:
-            paths_to_check = [
-                ("/workspace", "RunPod Workspace"),
-                ("/runpod-volume", "RunPod Volume"),
-                ("/content", "Colab Content"),
-                (str(Path.home()), "Home"),
-            ]
+            # Only show paths that exist
+            paths_to_check = []
+
+            if os.path.exists("/workspace"):
+                paths_to_check.append(("/workspace", "Workspace"))
+            if os.path.exists("/content"):
+                paths_to_check.append(("/content", "Colab Content"))
+            if not paths_to_check:
+                paths_to_check.append((str(Path.home()), "Home"))
 
             output = "### Speicherplatz\n\n"
 
             for path, label in paths_to_check:
-                if os.path.exists(path):
-                    stat = os.statvfs(path)
-                    total_gb = (stat.f_blocks * stat.f_frsize) / (1024**3)
-                    free_gb = (stat.f_bavail * stat.f_frsize) / (1024**3)
-                    used_gb = total_gb - free_gb
-                    percent = (used_gb / total_gb * 100) if total_gb > 0 else 0
+                stat = os.statvfs(path)
+                total_gb = (stat.f_blocks * stat.f_frsize) / (1024**3)
+                free_gb = (stat.f_bavail * stat.f_frsize) / (1024**3)
+                used_gb = total_gb - free_gb
+                percent = (used_gb / total_gb * 100) if total_gb > 0 else 0
 
-                    output += f"**{label}** (`{path}`)\n"
-                    output += f"- {used_gb:.1f} GB / {total_gb:.1f} GB ({percent:.0f}%)\n"
-                    output += f"- Frei: {free_gb:.1f} GB\n\n"
+                output += f"**{label}** (`{path}`)\n"
+                output += f"- {used_gb:.1f} GB / {total_gb:.1f} GB ({percent:.0f}%)\n"
+                output += f"- Frei: {free_gb:.1f} GB\n\n"
 
             return output if len(output) > 30 else "Keine Laufwerke gefunden"
 
