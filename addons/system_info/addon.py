@@ -205,32 +205,6 @@ class SystemInfoAddon(BaseAddon):
         except Exception as e:
             return f"❌ Fehler: {e}"
 
-    def restart_app(self) -> None:
-        """Restart the toolkit application using a helper script."""
-        # Create restart script
-        restart_script = PROJECT_DIR / "restart.sh"
-        pid = os.getpid()
-
-        script_content = f"""#!/bin/bash
-sleep 1
-kill {pid} 2>/dev/null
-sleep 1
-cd {PROJECT_DIR}
-nohup python app.py --port 7861 > /dev/null 2>&1 &
-rm -f {restart_script}
-"""
-
-        with open(restart_script, "w") as f:
-            f.write(script_content)
-        os.chmod(restart_script, 0o755)
-
-        # Execute restart script in background
-        subprocess.Popen(
-            ["bash", str(restart_script)],
-            start_new_session=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
 
     def render(self) -> gr.Blocks:
         """Render the System Info UI."""
@@ -240,7 +214,7 @@ rm -f {restart_script}
 
             with gr.Row():
                 refresh_btn = gr.Button("🔄 Aktualisieren", variant="primary", scale=2)
-                upgrade_btn = gr.Button("⬆️ Upgrade & Restart", variant="secondary", scale=1)
+                upgrade_btn = gr.Button("⬆️ Git Pull", variant="secondary", scale=1)
 
             with gr.Row():
                 with gr.Column():
@@ -277,8 +251,7 @@ rm -f {restart_script}
             def on_upgrade():
                 result = self.upgrade_toolkit()
                 if "erfolgreich" in result:
-                    self.restart_app()
-                    return result + "\n\n🔄 Neustart... Bitte Seite in 3 Sekunden neu laden!"
+                    return result + "\n\n✅ Update fertig! Zum Neustarten:\npkill -f app.py && python app.py --port 7861 &"
                 return result
 
             refresh_btn.click(
