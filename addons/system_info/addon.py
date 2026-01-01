@@ -206,25 +206,31 @@ class SystemInfoAddon(BaseAddon):
             return f"❌ Fehler: {e}"
 
     def restart_app(self) -> None:
-        """Restart the toolkit application."""
-        import threading
-        import signal
+        """Restart the toolkit application using a helper script."""
+        # Create restart script
+        restart_script = PROJECT_DIR / "restart.sh"
+        pid = os.getpid()
 
-        def delayed_restart():
-            import time
-            time.sleep(1)
-            # Start new process
-            subprocess.Popen(
-                [sys.executable, str(PROJECT_DIR / "app.py"), "--port", "7861"],
-                start_new_session=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            time.sleep(1)
-            # Kill current process
-            os.kill(os.getpid(), signal.SIGTERM)
+        script_content = f"""#!/bin/bash
+sleep 1
+kill {pid} 2>/dev/null
+sleep 1
+cd {PROJECT_DIR}
+nohup python app.py --port 7861 > /dev/null 2>&1 &
+rm -f {restart_script}
+"""
 
-        threading.Thread(target=delayed_restart, daemon=False).start()
+        with open(restart_script, "w") as f:
+            f.write(script_content)
+        os.chmod(restart_script, 0o755)
+
+        # Execute restart script in background
+        subprocess.Popen(
+            ["bash", str(restart_script)],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def render(self) -> gr.Blocks:
         """Render the System Info UI."""
