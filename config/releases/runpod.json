@@ -7,6 +7,7 @@
     {"id": "model_depot", "enabled": true},
     {"id": "workflow_manager", "enabled": true},
     {"id": "custom_nodes_manager", "enabled": true},
+    {"id": "git_sync", "enabled": true},
     {"id": "system_info", "enabled": true}
   ],
   "remote_profiles": {
