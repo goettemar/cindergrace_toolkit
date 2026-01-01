@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0",
+  "updated": "2025-01-01",
+  "description": "Custom nodes for ComfyUI. Managed by Cindergrace Toolkit.",
+  "nodes": [
+    {
+      "id": "comfyui-manager",
+      "name": "ComfyUI Manager",
+      "url": "https://github.com/ltdrdata/ComfyUI-Manager.git",
+      "description": "Essential node manager for ComfyUI",
+      "enabled": true,
+      "required": true
+    },
+    {
+      "id": "comfyui-wanvideowrapper",
+      "name": "WAN Video Wrapper",
+      "url": "https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
+      "description": "WAN 2.2 Video generation support",
+      "enabled": true
+    },
+    {
+      "id": "comfyui-florence2",
+      "name": "Florence2",
+      "url": "https://github.com/kijai/ComfyUI-Florence2.git",
+      "folder": "comfyui-florence2",
+      "description": "Image analysis with Florence2",
+      "enabled": true
+    },
+    {
+      "id": "comfyui-gguf",
+      "name": "GGUF Support",
+      "url": "https://github.com/city96/ComfyUI-GGUF.git",
+      "description": "Quantized GGUF model support",
+      "enabled": true
+    },
+    {
+      "id": "comfyui-custom-scripts",
+      "name": "Custom Scripts",
+      "url": "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git",
+      "folder": "comfyui-custom-scripts",
+      "description": "ShowText and other utilities",
+      "enabled": true
+    },
+    {
+      "id": "comfyui-videohelpersuite",
+      "name": "Video Helper Suite",
+      "url": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
+      "folder": "comfyui-videohelpersuite",
+      "description": "Video loading, combining, previewing",
+      "enabled": true
+    },
+    {
+      "id": "comfyui-kjnodes",
+      "name": "KJ Nodes",
+      "url": "https://github.com/kijai/ComfyUI-KJNodes.git",
+      "folder": "comfyui-kjnodes",
+      "description": "Various utility nodes by Kijai",
+      "enabled": true
+    },
+    {
+      "id": "comfyui-essentials",
+      "name": "ComfyUI Essentials",
+      "url": "https://github.com/cubiq/ComfyUI_essentials.git",
+      "folder": "comfyui_essentials",
+      "description": "Essential utility nodes",
+      "enabled": true
+    },
+    {
+      "id": "comfyui-eclipse",
+      "name": "ComfyUI Eclipse",
+      "url": "https://github.com/ryanontheinside/ComfyUI_Eclipse.git",
+      "folder": "ComfyUI_Eclipse",
+      "description": "Eclipse nodes",
+      "enabled": true
+    },
+    {
+      "id": "rgthree-comfy",
+      "name": "RGThree Nodes",
+      "url": "https://github.com/rgthree/rgthree-comfy.git",
+      "description": "Quality of life nodes",
+      "enabled": true
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Cindergrace Toolkit
 
-Modulares Gradio-Toolkit für ComfyUI - Workflow-basierte Modellverwaltung mit VRAM-Tiers.
+Modulares Gradio-Toolkit für ComfyUI - Workflow-basierte Modellverwaltung, Custom Nodes und Workflow-Sync.
 
 ## Features
 
@@ -11,11 +11,22 @@ Modulares Gradio-Toolkit für ComfyUI - Workflow-basierte Modellverwaltung mit V
 - "Andere Modelle löschen" - Platz schaffen durch Entfernen nicht benötigter Modelle
 - Disk-Space Anzeige beim Start (wichtig für RunPod!)
 
+### Custom Nodes Manager (NEU)
+- Custom Nodes aus `data/custom_nodes.json` verwalten
+- Enable/Disable Nodes ohne Image-Rebuild
+- Sync-Script für automatische Installation bei Pod-Start
+- Nodes hinzufügen/entfernen über UI
+
 ### Workflow Manager (nur lokal)
 - Workflows aus ComfyUI parsen und Model-Definitionen erstellen
 - VRAM-Tier Zuordnung (S=8-12GB, M=16GB, L=24-32GB)
 - Zielordner verwalten
 - Speichert direkt in `data/workflow_models.json`
+
+### Workflow Sync (NEU)
+- Workflows in `data/workflows/` zentral verwalten
+- Automatischer Sync zu ComfyUI bei Pod-Start
+- Kein manuelles Kopieren mehr nötig
 
 ### System Info
 - GPU, VRAM, RAM Anzeige
@@ -32,18 +43,25 @@ cindergrace_toolkit/
 │   └── config_manager.py       # Konfigurationsverwaltung
 ├── addons/
 │   ├── model_depot/            # Model Download & Management
+│   ├── custom_nodes_manager/   # Custom Nodes Management (NEU)
 │   ├── workflow_manager/       # Workflow-Definition Editor
 │   └── system_info/            # System-Informationen
+├── scripts/
+│   ├── sync_nodes.py           # Custom Nodes Sync Script (NEU)
+│   └── sync_workflows.py       # Workflow Sync Script (NEU)
 ├── config/
 │   ├── releases/               # Release-Konfigurationen
 │   │   ├── full.json           # Lokal: alle Addons
-│   │   ├── runpod.json         # RunPod: ohne Workflow Manager
+│   │   ├── runpod.json         # RunPod: mit Custom Nodes Manager
 │   │   └── minimal.json        # Minimal: nur Model Depot
 │   └── config.json             # Standard-Konfiguration
 ├── .config/
 │   └── config.json             # User-Konfiguration (optional, .gitignore)
 └── data/
-    └── workflow_models.json    # Workflow & Model Definitionen (Git)
+    ├── workflow_models.json    # Workflow & Model Definitionen (Git)
+    ├── custom_nodes.json       # Custom Nodes Definitionen (NEU)
+    └── workflows/              # Workflow JSON Dateien (NEU)
+        └── *.json
 ```
 
 ## Konfiguration
@@ -71,9 +89,39 @@ cindergrace_toolkit/
 }
 ```
 
+### Custom Nodes (`data/custom_nodes.json`)
+
+Definiert welche Custom Nodes installiert werden sollen:
+
+```json
+{
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "comfyui-manager",
+      "name": "ComfyUI Manager",
+      "url": "https://github.com/ltdrdata/ComfyUI-Manager.git",
+      "description": "Essential node manager",
+      "enabled": true,
+      "required": true
+    },
+    {
+      "id": "comfyui-wanvideowrapper",
+      "name": "WAN Video Wrapper",
+      "url": "https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
+      "enabled": true
+    }
+  ]
+}
+```
+
+### Workflows (`data/workflows/`)
+
+Workflow JSON-Dateien hier ablegen. Diese werden automatisch nach `ComfyUI/user/default/workflows/` synchronisiert.
+
 ### Workflow Models (`data/workflow_models.json`)
 
-Dies ist die **einzige Quelle** für Workflow- und Model-Definitionen. Wird via Git synchronisiert.
+Definiert Modelle für Workflows:
 
 ```json
 {
@@ -88,11 +136,6 @@ Dies ist die **einzige Quelle** für Workflow- und Model-Definitionen. Wird via 
           "name": "24GB VRAM",
           "vram_gb": 24,
           "models": ["wan22_14b_bf16", "wan22_vae", "wan22_clip"]
-        },
-        "16GB": {
-          "name": "16GB VRAM",
-          "vram_gb": 16,
-          "models": ["wan22_14b_fp8", "wan22_vae", "wan22_clip"]
         }
       }
     }
@@ -137,6 +180,19 @@ python app.py
 # Workflow Manager ist deaktiviert (read-only Umgebung)
 ```
 
+### Sync Scripts (CLI)
+
+```bash
+# Custom Nodes synchronisieren
+python scripts/sync_nodes.py --comfyui-path /workspace/ComfyUI
+
+# Workflows synchronisieren
+python scripts/sync_workflows.py --comfyui-path /workspace/ComfyUI
+
+# Dry-run (zeigt was passieren würde)
+python scripts/sync_nodes.py --dry-run
+```
+
 ### Kommandozeilen-Optionen
 
 | Option | Beschreibung |
@@ -150,8 +206,8 @@ python app.py
 
 | Release | Addons | Plattform |
 |---------|--------|-----------|
-| `full` | Model Depot, Workflow Manager, System Info | Lokal |
-| `runpod` | Model Depot, System Info | RunPod/Colab |
+| `full` | Model Depot, Custom Nodes Manager, Workflow Manager, System Info | Lokal |
+| `runpod` | Model Depot, Custom Nodes Manager, System Info | RunPod/Colab |
 | `minimal` | Model Depot | Überall |
 
 ## VRAM-Tiers
@@ -172,15 +228,17 @@ python app.py
 4. VRAM-Tiers zuordnen (S/M/L Checkboxen)
 5. URLs und Ordner anpassen
 6. "Speichern" (schreibt nach `data/workflow_models.json`)
-7. `git commit && git push`
+7. Workflow JSON nach `data/workflows/` kopieren
+8. `git commit && git push`
 
 ### RunPod Deployment
 
-1. `git pull` (holt aktuelle `data/workflow_models.json`)
-2. App starten (`python app.py`)
-3. Model Depot zeigt verfügbare Workflows
-4. VRAM-Tier passend zur GPU wählen
-5. Fehlende Modelle downloaden
+1. Pod startet → Toolkit wird geklont/aktualisiert
+2. Custom Nodes werden automatisch installiert
+3. Workflows werden automatisch synchronisiert
+4. Model Depot zeigt verfügbare Workflows
+5. VRAM-Tier passend zur GPU wählen
+6. Fehlende Modelle downloaden
 
 ## Eigene Addons erstellen
 
@@ -255,6 +313,8 @@ The toolkit validates all file paths to prevent directory traversal attacks. Onl
 ## Roadmap
 
 ### Next Release
+- [x] Custom Nodes Manager
+- [x] Workflow Sync
 - [ ] Remote Profiles via Git URL
 - [ ] HuggingFace Token Integration
 - [ ] Download queue with progress bar
@@ -267,8 +327,6 @@ The toolkit validates all file paths to prevent directory traversal attacks. Onl
 - [ ] Config UI (edit paths, VRAM tiers in app)
 - [ ] Status aggregates (total MB to download/free)
 - [ ] Scan caching for large model collections
-- [ ] Harden target folder validation (reject `..`/backslashes, normalize paths)
-- [ ] Add regression tests for disclaimer flow and path sanitization
 
 ## License
 
