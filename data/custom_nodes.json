@@ -1,84 +1,19 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "updated": "2025-01-01",
-  "description": "Custom nodes for ComfyUI. Managed by Cindergrace Toolkit.",
+  "description": "Custom nodes for ComfyUI. Uses ComfyUI-Manager CLI for installation.",
+  "manager": {
+    "id": "comfyui-manager",
+    "name": "ComfyUI Manager",
+    "url": "https://github.com/ltdrdata/ComfyUI-Manager.git",
+    "description": "Required for cm-cli. Installed via git.",
+    "required": true
+  },
   "nodes": [
     {
-      "id": "comfyui-manager",
-      "name": "ComfyUI Manager",
-      "url": "https://github.com/ltdrdata/ComfyUI-Manager.git",
-      "description": "Essential node manager for ComfyUI",
+      "name": "ComfyUI-Florence2",
       "enabled": true,
-      "required": true
-    },
-    {
-      "id": "comfyui-wanvideowrapper",
-      "name": "WAN Video Wrapper",
-      "url": "https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
-      "description": "WAN 2.2 Video generation support",
-      "enabled": false
-    },
-    {
-      "id": "comfyui-florence2",
-      "name": "Florence2",
-      "url": "https://github.com/kijai/ComfyUI-Florence2.git",
-      "folder": "comfyui-florence2",
-      "description": "Image analysis with Florence2",
-      "enabled": false
-    },
-    {
-      "id": "comfyui-gguf",
-      "name": "GGUF Support",
-      "url": "https://github.com/city96/ComfyUI-GGUF.git",
-      "description": "Quantized GGUF model support",
-      "enabled": false
-    },
-    {
-      "id": "comfyui-custom-scripts",
-      "name": "Custom Scripts",
-      "url": "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git",
-      "folder": "comfyui-custom-scripts",
-      "description": "ShowText and other utilities",
-      "enabled": false
-    },
-    {
-      "id": "comfyui-videohelpersuite",
-      "name": "Video Helper Suite",
-      "url": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
-      "folder": "comfyui-videohelpersuite",
-      "description": "Video loading, combining, previewing",
-      "enabled": false
-    },
-    {
-      "id": "comfyui-kjnodes",
-      "name": "KJ Nodes",
-      "url": "https://github.com/kijai/ComfyUI-KJNodes.git",
-      "folder": "comfyui-kjnodes",
-      "description": "Various utility nodes by Kijai",
-      "enabled": false
-    },
-    {
-      "id": "comfyui-essentials",
-      "name": "ComfyUI Essentials",
-      "url": "https://github.com/cubiq/ComfyUI_essentials.git",
-      "folder": "comfyui_essentials",
-      "description": "Essential utility nodes",
-      "enabled": false
-    },
-    {
-      "id": "comfyui-eclipse",
-      "name": "ComfyUI Eclipse",
-      "url": "https://github.com/ryanontheinside/ComfyUI_Eclipse.git",
-      "folder": "ComfyUI_Eclipse",
-      "description": "Eclipse nodes",
-      "enabled": false
-    },
-    {
-      "id": "rgthree-comfy",
-      "name": "RGThree Nodes",
-      "url": "https://github.com/rgthree/rgthree-comfy.git",
-      "description": "Quality of life nodes",
-      "enabled": false
+      "description": "Image analysis with Florence2"
     }
   ]
 }

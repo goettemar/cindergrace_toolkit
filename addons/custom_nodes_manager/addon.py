@@ -1,10 +1,9 @@
-"""Custom Nodes Manager Addon - Manage ComfyUI custom nodes from config."""
+"""Custom Nodes Manager Addon - Manage ComfyUI custom nodes using cm-cli."""
 
 import json
 import os
 import subprocess
 import sys
-import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
@@ -27,18 +26,14 @@ class NodeStatus(Enum):
 @dataclass
 class NodeInfo:
     """Custom node information."""
-    id: str
     name: str
-    url: str
     description: str
     enabled: bool
-    required: bool
     status: NodeStatus = NodeStatus.MISSING
-    folder_name: str = ""
 
 
 class CustomNodesManagerAddon(BaseAddon):
-    """Custom Nodes Manager - Install and update custom nodes from config."""
+    """Custom Nodes Manager - Install and manage nodes via ComfyUI-Manager CLI."""
 
     PROJECT_DIR = Path(__file__).parent.parent.parent
     DATA_DIR = PROJECT_DIR / "data"
@@ -50,7 +45,7 @@ class CustomNodesManagerAddon(BaseAddon):
     def __init__(self):
         super().__init__()
         self.name = "Custom Nodes"
-        self.version = "1.0.0"
+        self.version = "2.0.0"
         self.icon = "🔧"
 
         self._config: Dict[str, Any] = {}
@@ -79,7 +74,7 @@ class CustomNodesManagerAddon(BaseAddon):
 
     def _load_nodes_config(self) -> None:
         """Load custom_nodes.json."""
-        self._nodes_config = {"version": "1.0.0", "nodes": []}
+        self._nodes_config = {"version": "2.0.0", "nodes": []}
 
         config_file = self.DATA_DIR / "custom_nodes.json"
         if config_file.exists():
@@ -111,46 +106,39 @@ class CustomNodesManagerAddon(BaseAddon):
             self._comfyui_path = Path(comfy_path)
             self._custom_nodes_path = self._comfyui_path / "custom_nodes"
 
-    def _get_folder_name(self, url: str, folder_override: str = None) -> str:
-        """Extract folder name from git URL or use override."""
-        if folder_override:
-            return folder_override
-        name = url.rstrip("/").rstrip(".git").split("/")[-1]
-        return name
-
     def _get_nodes(self) -> List[NodeInfo]:
         """Get all nodes with their status."""
         nodes = []
 
         for node_data in self._nodes_config.get("nodes", []):
-            folder_override = node_data.get("folder", None)
+            name = node_data.get("name", "")
+            if not name:
+                continue
+
             node = NodeInfo(
-                id=node_data.get("id", ""),
-                name=node_data.get("name", ""),
-                url=node_data.get("url", ""),
+                name=name,
                 description=node_data.get("description", ""),
                 enabled=node_data.get("enabled", False),
-                required=node_data.get("required", False),
-                folder_name=self._get_folder_name(node_data.get("url", ""), folder_override)
             )
 
-            # Check installation status
-            if self._custom_nodes_path and node.folder_name:
-                node_path = self._custom_nodes_path / node.folder_name
-                if node_path.exists():
-                    if node.enabled:
-                        node.status = NodeStatus.INSTALLED
-                    else:
-                        node.status = NodeStatus.DISABLED
+            # Check installation status by looking for folder
+            if self._custom_nodes_path:
+                # cm-cli uses the node name as folder name
+                possible_folders = [
+                    name,
+                    name.replace(" ", "-"),
+                    name.replace(" ", "_"),
+                ]
+                installed = False
+                for folder in possible_folders:
+                    if (self._custom_nodes_path / folder).exists():
+                        installed = True
+                        break
+
+                if installed:
+                    node.status = NodeStatus.INSTALLED if node.enabled else NodeStatus.DISABLED
                 else:
                     node.status = NodeStatus.MISSING
-
-            # Check if currently syncing
-            if node.id in self._sync_status:
-                if "updating" in self._sync_status[node.id].lower():
-                    node.status = NodeStatus.UPDATING
-                elif "error" in self._sync_status[node.id].lower():
-                    node.status = NodeStatus.ERROR
 
             nodes.append(node)
 
@@ -171,31 +159,27 @@ class CustomNodesManagerAddon(BaseAddon):
             }.get(node.status, "?")
 
             enabled_icon = "✅" if node.enabled else "❌"
-            required_icon = "🔒" if node.required else ""
 
             table.append([
                 status_icon,
                 enabled_icon,
-                f"{node.name} {required_icon}".strip(),
+                node.name,
                 node.description[:50] + "..." if len(node.description) > 50 else node.description,
-                node.id
             ])
 
         return table
 
-    def _toggle_node(self, node_id: str, enable: bool) -> str:
+    def _toggle_node(self, node_name: str, enable: bool) -> str:
         """Enable or disable a node in config."""
         for node in self._nodes_config.get("nodes", []):
-            if node.get("id") == node_id:
-                if node.get("required", False) and not enable:
-                    return f"Cannot disable required node: {node.get('name')}"
+            if node.get("name") == node_name:
                 node["enabled"] = enable
                 self._save_nodes_config()
-                return f"{'Enabled' if enable else 'Disabled'}: {node.get('name')}"
+                return f"{'Enabled' if enable else 'Disabled'}: {node_name}"
 
-        return f"Node not found: {node_id}"
+        return f"Node not found: {node_name}"
 
-    def _run_sync(self, remove_disabled: bool = False) -> str:
+    def _run_sync(self, remove_disabled: bool = False, update_all: bool = False) -> str:
         """Run the sync_nodes.py script."""
         if self._sync_running:
             return "Sync already running..."
@@ -213,6 +197,8 @@ class CustomNodesManagerAddon(BaseAddon):
             cmd.extend(["--comfyui-path", str(self._comfyui_path)])
         if remove_disabled:
             cmd.append("--remove-disabled")
+        if update_all:
+            cmd.append("--update-all")
 
         try:
             result = subprocess.run(
@@ -230,52 +216,49 @@ class CustomNodesManagerAddon(BaseAddon):
             self._sync_running = False
             return f"Error: {e}"
 
-    def _add_node(self, name: str, url: str, description: str) -> str:
+    def _add_node(self, name: str, description: str) -> str:
         """Add a new node to config."""
-        if not name or not url:
-            return "Name and URL are required"
+        if not name:
+            return "Node name is required"
 
-        # Generate ID from name
-        node_id = name.lower().replace(" ", "-").replace("_", "-")
+        # Normalize name
+        name = name.strip()
 
         # Check if already exists
         for node in self._nodes_config.get("nodes", []):
-            if node.get("id") == node_id or node.get("url") == url:
+            if node.get("name", "").lower() == name.lower():
                 return f"Node already exists: {node.get('name')}"
 
         new_node = {
-            "id": node_id,
             "name": name,
-            "url": url,
-            "description": description,
-            "enabled": True
+            "enabled": True,
+            "description": description or ""
         }
 
         self._nodes_config.setdefault("nodes", []).append(new_node)
         self._save_nodes_config()
-        return f"Added: {name}"
+        return f"✅ Added: {name}\n\nRun 'Sync Nodes' to install."
 
-    def _remove_node(self, node_id: str) -> str:
+    def _remove_node(self, node_name: str) -> str:
         """Remove a node from config."""
         nodes = self._nodes_config.get("nodes", [])
 
         for i, node in enumerate(nodes):
-            if node.get("id") == node_id:
-                if node.get("required", False):
-                    return f"Cannot remove required node: {node.get('name')}"
+            if node.get("name") == node_name:
                 removed = nodes.pop(i)
                 self._save_nodes_config()
-                return f"Removed: {removed.get('name')}"
+                return f"Removed from config: {removed.get('name')}\n\nUse 'Remove disabled' during sync to uninstall."
 
-        return f"Node not found: {node_id}"
+        return f"Node not found: {node_name}"
 
     def _get_node_choices(self) -> List[Tuple[str, str]]:
-        """Get node choices for dropdowns as (display_name, id) tuples."""
+        """Get node choices for dropdowns as (display_name, name) tuples."""
         choices = []
         for node_data in self._nodes_config.get("nodes", []):
-            node_id = node_data.get("id", "")
-            name = node_data.get("name", node_id)
-            choices.append((f"{name} ({node_id})", node_id))
+            name = node_data.get("name", "")
+            if name:
+                enabled = "✅" if node_data.get("enabled", False) else "❌"
+                choices.append((f"{enabled} {name}", name))
         return sorted(choices, key=lambda x: x[0])
 
     def _get_orphaned_nodes(self) -> List[Dict[str, str]]:
@@ -285,34 +268,24 @@ class CustomNodesManagerAddon(BaseAddon):
         if not self._custom_nodes_path or not self._custom_nodes_path.exists():
             return orphaned
 
-        # Get all folder names from config
-        config_folders = set()
+        # Get all node names from config
+        config_names = set()
         for node_data in self._nodes_config.get("nodes", []):
-            folder = node_data.get("folder") or self._get_folder_name(node_data.get("url", ""))
-            config_folders.add(folder)
+            name = node_data.get("name", "")
+            if name:
+                config_names.add(name.lower())
+                config_names.add(name.lower().replace(" ", "-"))
+                config_names.add(name.lower().replace(" ", "_"))
+
+        # Also add manager
+        config_names.add("comfyui-manager")
 
         # Scan custom_nodes directory
         for item in self._custom_nodes_path.iterdir():
             if item.is_dir() and not item.name.startswith(".") and item.name != "__pycache__":
-                if item.name not in config_folders:
-                    # Try to get git remote URL
-                    git_url = ""
-                    try:
-                        result = subprocess.run(
-                            ["git", "remote", "get-url", "origin"],
-                            cwd=item,
-                            capture_output=True,
-                            text=True,
-                            timeout=5
-                        )
-                        if result.returncode == 0:
-                            git_url = result.stdout.strip()
-                    except Exception:
-                        pass
-
+                if item.name.lower() not in config_names:
                     orphaned.append({
                         "folder": item.name,
-                        "url": git_url,
                         "path": str(item)
                     })
 
@@ -320,28 +293,18 @@ class CustomNodesManagerAddon(BaseAddon):
 
     def _restore_orphaned_node(self, folder: str) -> str:
         """Re-add an orphaned node to config."""
-        orphaned = self._get_orphaned_nodes()
+        # Generate a nice name from folder
+        name = folder
 
-        for node in orphaned:
-            if node["folder"] == folder:
-                # Generate node entry
-                name = folder.replace("-", " ").replace("_", " ").title()
-                node_id = folder.lower().replace(" ", "-")
+        new_node = {
+            "name": name,
+            "description": "Restored from disk",
+            "enabled": True,
+        }
 
-                new_node = {
-                    "id": node_id,
-                    "name": name,
-                    "url": node["url"] or f"https://github.com/unknown/{folder}",
-                    "description": "Restored from disk",
-                    "enabled": True,
-                    "folder": folder
-                }
-
-                self._nodes_config.setdefault("nodes", []).append(new_node)
-                self._save_nodes_config()
-                return f"✅ Restored: {name}"
-
-        return f"❌ Not found: {folder}"
+        self._nodes_config.setdefault("nodes", []).append(new_node)
+        self._save_nodes_config()
+        return f"✅ Restored: {name}"
 
     def _delete_orphaned_node(self, folder: str) -> str:
         """Delete an orphaned node from disk."""
@@ -352,7 +315,7 @@ class CustomNodesManagerAddon(BaseAddon):
         if not node_path.exists():
             return f"❌ Folder not found: {folder}"
 
-        # Safety check - must be in custom_nodes
+        # Safety check
         if self._custom_nodes_path not in node_path.parents and node_path.parent != self._custom_nodes_path:
             return "❌ Invalid path"
 
@@ -366,19 +329,12 @@ class CustomNodesManagerAddon(BaseAddon):
     def _get_orphaned_choices(self) -> List[Tuple[str, str]]:
         """Get orphaned node choices for dropdown."""
         orphaned = self._get_orphaned_nodes()
-        choices = []
-        for node in orphaned:
-            label = f"{node['folder']}"
-            if node['url']:
-                label += f" ({node['url'].split('/')[-1].replace('.git', '')})"
-            choices.append((label, node['folder']))
-        return choices
+        return [(node['folder'], node['folder']) for node in orphaned]
 
     def _get_error_logs(self) -> str:
         """Read error logs from sync and startup."""
         logs = []
 
-        # Read sync errors
         sync_log = self.LOGS_DIR / "sync_errors.log"
         if sync_log.exists():
             try:
@@ -388,7 +344,6 @@ class CustomNodesManagerAddon(BaseAddon):
             except Exception:
                 pass
 
-        # Read startup errors
         startup_log = self.LOGS_DIR / "startup_errors.log"
         if startup_log.exists():
             try:
@@ -424,7 +379,7 @@ class CustomNodesManagerAddon(BaseAddon):
 
         with gr.Blocks() as ui:
             gr.Markdown("## 🔧 Custom Nodes Manager")
-            gr.Markdown("*Manage ComfyUI custom nodes from `data/custom_nodes.json`*")
+            gr.Markdown("*Manage ComfyUI custom nodes via ComfyUI-Manager CLI*")
 
             # === Status Info ===
             with gr.Row():
@@ -433,21 +388,23 @@ class CustomNodesManagerAddon(BaseAddon):
                     gr.Markdown(f"**ComfyUI:** {comfy_status}")
                 with gr.Column(scale=1):
                     node_count = len(self._nodes_config.get("nodes", []))
-                    gr.Markdown(f"**Nodes defined:** {node_count}")
+                    gr.Markdown(f"**Nodes in config:** {node_count}")
 
             # === Nodes Table ===
             nodes_table = gr.Dataframe(
-                headers=["Status", "Enabled", "Name", "Description", "ID"],
-                datatype=["str", "str", "str", "str", "str"],
+                headers=["Status", "Enabled", "Name", "Description"],
+                datatype=["str", "str", "str", "str"],
                 value=self._get_nodes_table(),
                 label="Custom Nodes",
                 interactive=False,
             )
 
             # === Sync Actions ===
+            gr.Markdown("### ⚡ Sync Actions")
             with gr.Row():
                 sync_btn = gr.Button("🔄 Sync Nodes", variant="primary", scale=2)
-                refresh_btn = gr.Button("Refresh", scale=1)
+                update_all_btn = gr.Button("⬆️ Update All", scale=1)
+                refresh_btn = gr.Button("🔃 Refresh", scale=1)
 
             with gr.Row():
                 remove_disabled_cb = gr.Checkbox(
@@ -456,14 +413,13 @@ class CustomNodesManagerAddon(BaseAddon):
                     scale=2
                 )
 
-            sync_output = gr.Textbox(label="Sync Output", lines=10, interactive=False)
+            sync_output = gr.Textbox(label="Output", lines=10, interactive=False)
 
             # =============================================
             # Toggle Node (Enable/Disable)
             # =============================================
             gr.Markdown("---")
             gr.Markdown("### ⚡ Toggle Node")
-            gr.Markdown("*Enable or disable a node in the config*")
 
             with gr.Row():
                 toggle_dropdown = gr.Dropdown(
@@ -482,24 +438,29 @@ class CustomNodesManagerAddon(BaseAddon):
             # =============================================
             gr.Markdown("---")
             gr.Markdown("### ➕ Add New Node")
-            gr.Markdown("*Add a new custom node to the config. Node ID is auto-generated from the name.*")
+            gr.Markdown("*Enter the exact node name from ComfyUI-Manager (e.g. `ComfyUI-Impact-Pack`)*")
 
             with gr.Row():
-                new_name = gr.Textbox(label="Name", placeholder="My Custom Node", scale=1)
-                new_url = gr.Textbox(label="Git URL", placeholder="https://github.com/user/repo.git", scale=2)
-
-            new_desc = gr.Textbox(label="Description", placeholder="What does this node do?")
+                new_name = gr.Textbox(
+                    label="Node Name",
+                    placeholder="ComfyUI-Impact-Pack",
+                    scale=2
+                )
+                new_desc = gr.Textbox(
+                    label="Description (optional)",
+                    placeholder="What does this node do?",
+                    scale=2
+                )
 
             with gr.Row():
                 add_btn = gr.Button("➕ Add Node", variant="primary")
-                add_output = gr.Textbox(label="Result", lines=1, interactive=False, scale=2)
+                add_output = gr.Textbox(label="Result", lines=2, interactive=False, scale=2)
 
             # =============================================
             # Remove Node from Config
             # =============================================
             gr.Markdown("---")
             gr.Markdown("### 🗑️ Remove Node from Config")
-            gr.Markdown("*Removes from config only. Use 'Remove disabled from disk' during sync to delete files.*")
 
             with gr.Row():
                 remove_dropdown = gr.Dropdown(
@@ -512,11 +473,11 @@ class CustomNodesManagerAddon(BaseAddon):
                 remove_output = gr.Textbox(label="Result", lines=1, interactive=False, scale=2)
 
             # =============================================
-            # Orphaned Nodes (on disk but not in config)
+            # Orphaned Nodes
             # =============================================
             gr.Markdown("---")
             gr.Markdown("### 👻 Verwaiste Nodes")
-            gr.Markdown("*Nodes auf der Disk die nicht in der Config sind (z.B. nach 'Remove from Config')*")
+            gr.Markdown("*Nodes auf der Disk die nicht in der Config sind*")
 
             orphaned_choices = self._get_orphaned_choices()
             orphaned_count = len(orphaned_choices)
@@ -525,18 +486,18 @@ class CustomNodesManagerAddon(BaseAddon):
                 f"**Gefunden:** {orphaned_count} verwaiste Node(s)" if orphaned_count > 0 else "✅ Keine verwaisten Nodes"
             )
 
-            with gr.Row(visible=orphaned_count > 0) as orphaned_row:
+            with gr.Row():
                 orphaned_dropdown = gr.Dropdown(
                     label="Verwaister Node",
                     choices=orphaned_choices,
                     value=None,
-                    scale=2
+                    scale=2,
+                    visible=orphaned_count > 0
                 )
-                restore_btn = gr.Button("♻️ Wiederherstellen", variant="primary", scale=1)
-                delete_disk_btn = gr.Button("🗑️ Von Disk löschen", variant="stop", scale=1)
+                restore_btn = gr.Button("♻️ Wiederherstellen", scale=1, visible=orphaned_count > 0)
+                delete_disk_btn = gr.Button("🗑️ Von Disk löschen", variant="stop", scale=1, visible=orphaned_count > 0)
 
             orphaned_output = gr.Textbox(label="Ergebnis", lines=1, interactive=False, visible=orphaned_count > 0)
-
             refresh_orphaned_btn = gr.Button("🔄 Verwaiste Nodes suchen")
 
             # =============================================
@@ -544,7 +505,6 @@ class CustomNodesManagerAddon(BaseAddon):
             # =============================================
             gr.Markdown("---")
             gr.Markdown("### 📋 Error Logs")
-            gr.Markdown("*Errors from sync and startup operations*")
 
             error_logs = gr.Textbox(
                 label="Errors",
@@ -562,7 +522,11 @@ class CustomNodesManagerAddon(BaseAddon):
 
             def on_sync(remove_disabled):
                 result = self._run_sync(remove_disabled)
-                self._load_nodes_config()  # Reload config after sync
+                self._load_nodes_config()
+                return result, self._get_nodes_table(), self._get_error_logs()
+
+            def on_update_all():
+                result = self._run_sync(update_all=True)
                 return result, self._get_nodes_table(), self._get_error_logs()
 
             def on_refresh():
@@ -582,43 +546,44 @@ class CustomNodesManagerAddon(BaseAddon):
                 result = self._clear_error_logs()
                 return self._get_error_logs(), result
 
-            def on_enable(node_id):
-                if not node_id:
-                    return "Please select a node", self._get_nodes_table()
-                result = self._toggle_node(node_id, True)
-                return result, self._get_nodes_table()
+            def on_enable(node_name):
+                if not node_name:
+                    return "Please select a node", self._get_nodes_table(), gr.update()
+                result = self._toggle_node(node_name, True)
+                choices = self._get_node_choices()
+                return result, self._get_nodes_table(), gr.update(choices=choices)
 
-            def on_disable(node_id):
-                if not node_id:
-                    return "Please select a node", self._get_nodes_table()
-                result = self._toggle_node(node_id, False)
-                return result, self._get_nodes_table()
+            def on_disable(node_name):
+                if not node_name:
+                    return "Please select a node", self._get_nodes_table(), gr.update()
+                result = self._toggle_node(node_name, False)
+                choices = self._get_node_choices()
+                return result, self._get_nodes_table(), gr.update(choices=choices)
 
-            def on_add(name, url, desc):
-                result = self._add_node(name, url, desc)
-                self._load_nodes_config()  # Reload to get new choices
+            def on_add(name, desc):
+                result = self._add_node(name, desc)
+                self._load_nodes_config()
                 choices = self._get_node_choices()
                 return (
                     result,
                     self._get_nodes_table(),
                     "",  # Clear name
-                    "",  # Clear url
                     "",  # Clear desc
-                    gr.update(choices=choices),  # Update toggle dropdown
-                    gr.update(choices=choices)   # Update remove dropdown
+                    gr.update(choices=choices),
+                    gr.update(choices=choices)
                 )
 
-            def on_remove(node_id):
-                if not node_id:
+            def on_remove(node_name):
+                if not node_name:
                     return "Please select a node", self._get_nodes_table(), gr.update(), gr.update()
-                result = self._remove_node(node_id)
-                self._load_nodes_config()  # Reload to update choices
+                result = self._remove_node(node_name)
+                self._load_nodes_config()
                 choices = self._get_node_choices()
                 return (
                     result,
                     self._get_nodes_table(),
-                    gr.update(choices=choices, value=None),  # Update toggle dropdown
-                    gr.update(choices=choices, value=None)   # Update remove dropdown
+                    gr.update(choices=choices, value=None),
+                    gr.update(choices=choices, value=None)
                 )
 
             def on_refresh_orphaned():
@@ -628,6 +593,8 @@ class CustomNodesManagerAddon(BaseAddon):
                 return (
                     info_text,
                     gr.update(choices=orphaned, value=None, visible=count > 0),
+                    gr.update(visible=count > 0),
+                    gr.update(visible=count > 0),
                     gr.update(visible=count > 0)
                 )
 
@@ -636,7 +603,6 @@ class CustomNodesManagerAddon(BaseAddon):
                     return "Bitte Node auswählen", gr.update(), gr.update(), self._get_nodes_table(), gr.update(), gr.update()
                 result = self._restore_orphaned_node(folder)
                 self._load_nodes_config()
-                # Refresh all lists
                 orphaned = self._get_orphaned_choices()
                 count = len(orphaned)
                 info_text = f"**Gefunden:** {count} verwaiste Node(s)" if count > 0 else "✅ Keine verwaisten Nodes"
@@ -654,7 +620,6 @@ class CustomNodesManagerAddon(BaseAddon):
                 if not folder:
                     return "Bitte Node auswählen", gr.update(), gr.update()
                 result = self._delete_orphaned_node(folder)
-                # Refresh orphaned list
                 orphaned = self._get_orphaned_choices()
                 count = len(orphaned)
                 info_text = f"**Gefunden:** {count} verwaiste Node(s)" if count > 0 else "✅ Keine verwaisten Nodes"
@@ -668,6 +633,11 @@ class CustomNodesManagerAddon(BaseAddon):
             sync_btn.click(
                 on_sync,
                 inputs=[remove_disabled_cb],
+                outputs=[sync_output, nodes_table, error_logs]
+            )
+
+            update_all_btn.click(
+                on_update_all,
                 outputs=[sync_output, nodes_table, error_logs]
             )
 
@@ -689,19 +659,19 @@ class CustomNodesManagerAddon(BaseAddon):
             enable_btn.click(
                 on_enable,
                 inputs=[toggle_dropdown],
-                outputs=[toggle_output, nodes_table]
+                outputs=[toggle_output, nodes_table, toggle_dropdown]
             )
 
             disable_btn.click(
                 on_disable,
                 inputs=[toggle_dropdown],
-                outputs=[toggle_output, nodes_table]
+                outputs=[toggle_output, nodes_table, toggle_dropdown]
             )
 
             add_btn.click(
                 on_add,
-                inputs=[new_name, new_url, new_desc],
-                outputs=[add_output, nodes_table, new_name, new_url, new_desc, toggle_dropdown, remove_dropdown]
+                inputs=[new_name, new_desc],
+                outputs=[add_output, nodes_table, new_name, new_desc, toggle_dropdown, remove_dropdown]
             )
 
             remove_btn.click(
@@ -712,7 +682,7 @@ class CustomNodesManagerAddon(BaseAddon):
 
             refresh_orphaned_btn.click(
                 on_refresh_orphaned,
-                outputs=[orphaned_info, orphaned_dropdown, orphaned_output]
+                outputs=[orphaned_info, orphaned_dropdown, restore_btn, delete_disk_btn, orphaned_output]
             )
 
             restore_btn.click(

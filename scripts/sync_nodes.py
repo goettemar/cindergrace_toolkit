@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Sync Custom Nodes - Install/update custom nodes from config.
+Sync Custom Nodes - Install/update custom nodes using ComfyUI-Manager CLI.
 
 Usage:
     python sync_nodes.py [--comfyui-path PATH] [--remove-disabled] [--dry-run]
 
-This script reads data/custom_nodes.json and ensures all enabled nodes
-are installed and up-to-date in the ComfyUI custom_nodes directory.
+This script reads data/custom_nodes.json and uses cm-cli.py to manage nodes.
+ComfyUI-Manager is installed via git first, then cm-cli handles all other nodes.
 
 Errors are logged to logs/sync_errors.log for the toolkit to display.
 """
@@ -42,7 +42,7 @@ def log_error(node_name: str, operation: str, error_msg: str) -> None:
         with open(ERROR_LOG, "a", encoding="utf-8") as f:
             f.write(log_line)
     except Exception:
-        pass  # Don't fail if logging fails
+        pass
 
 
 def clear_error_log() -> None:
@@ -67,7 +67,6 @@ def load_custom_nodes_config() -> Dict:
 
 def detect_comfyui_path() -> Optional[Path]:
     """Auto-detect ComfyUI path based on environment."""
-    # Try common locations
     candidates = [
         Path("/workspace/ComfyUI"),  # RunPod
         Path("/content/ComfyUI"),    # Colab
@@ -75,7 +74,6 @@ def detect_comfyui_path() -> Optional[Path]:
         Path.home() / "projekte" / "ComfyUI",  # Local alt
     ]
 
-    # Also check config files
     for config_path in [PROJECT_DIR / ".config" / "config.json", CONFIG_DIR / "config.json"]:
         if config_path.exists():
             try:
@@ -84,7 +82,6 @@ def detect_comfyui_path() -> Optional[Path]:
 
                 paths = config.get("paths", {}).get("comfyui", {})
 
-                # Detect environment
                 if os.path.exists("/workspace"):
                     env = "runpod"
                 elif os.path.exists("/content"):
@@ -107,20 +104,11 @@ def detect_comfyui_path() -> Optional[Path]:
     return None
 
 
-def get_node_folder_name(url: str, folder_override: str = None) -> str:
-    """Extract folder name from git URL or use override."""
-    if folder_override:
-        return folder_override
-    # https://github.com/user/ComfyUI-Something.git -> ComfyUI-Something
-    name = url.rstrip("/").rstrip(".git").split("/")[-1]
-    return name
-
-
 def run_command(
     cmd: List[str],
     cwd: Optional[Path] = None,
     quiet: bool = False,
-    timeout: int = 120
+    timeout: int = 300
 ) -> Tuple[int, str]:
     """Run a shell command and return (returncode, output)."""
     try:
@@ -133,8 +121,7 @@ def run_command(
         )
         output = result.stdout + result.stderr
         if not quiet and result.returncode != 0:
-            print(f"      Command failed: {' '.join(cmd)}")
-            print(f"      Output: {output[:500]}")
+            print(f"      Command failed: {' '.join(cmd[:3])}...")
         return result.returncode, output
     except subprocess.TimeoutExpired:
         return -1, f"Command timed out after {timeout}s"
@@ -142,107 +129,67 @@ def run_command(
         return -1, str(e)
 
 
-def install_requirements(node_path: Path, quiet: bool = False) -> bool:
-    """Install requirements.txt if it exists."""
-    req_file = node_path / "requirements.txt"
-    if not req_file.exists():
+def ensure_manager_installed(custom_nodes_dir: Path, manager_config: Dict, quiet: bool = False) -> bool:
+    """Ensure ComfyUI-Manager is installed (required for cm-cli)."""
+    manager_path = custom_nodes_dir / "ComfyUI-Manager"
+
+    if manager_path.exists():
+        if not quiet:
+            print("  [OK] ComfyUI-Manager already installed")
         return True
 
+    url = manager_config.get("url", "https://github.com/ltdrdata/ComfyUI-Manager.git")
+
     if not quiet:
-        print(f"      Installing requirements...")
-
-    code, _ = run_command(
-        [sys.executable, "-m", "pip", "install", "-q", "-r", str(req_file)],
-        cwd=node_path,
-        quiet=quiet
-    )
-    return code == 0
-
-
-def clone_node(url: str, target_dir: Path, node_name: str = "", quiet: bool = False) -> bool:
-    """Clone a git repository with error logging."""
-    if not quiet:
+        print("  [INSTALL] ComfyUI-Manager (required for cm-cli)")
         print(f"      Cloning from {url}...")
 
     code, output = run_command(
-        ["git", "clone", "--quiet", "--depth", "1", url, str(target_dir)],
-        quiet=quiet,
-        timeout=180  # 3 minutes for clone
+        ["git", "clone", "--quiet", "--depth", "1", url, str(manager_path)],
+        timeout=180
     )
 
     if code != 0:
-        error_msg = output[:200] if output else "Unknown error"
-        log_error(node_name or url, "CLONE", error_msg)
-        if not quiet:
-            print(f"      [ERROR] Clone failed: {error_msg[:100]}")
+        log_error("ComfyUI-Manager", "CLONE", output[:200])
+        print(f"      [ERROR] Clone failed: {output[:100]}")
         return False
 
-    install_requirements(target_dir, quiet)
+    # Install requirements
+    req_file = manager_path / "requirements.txt"
+    if req_file.exists():
+        if not quiet:
+            print("      Installing requirements...")
+        run_command(
+            [sys.executable, "-m", "pip", "install", "-q", "-r", str(req_file)],
+            cwd=manager_path,
+            quiet=True
+        )
+
+    if not quiet:
+        print("      Installed!")
     return True
 
 
-def update_node(node_path: Path, node_name: str = "", quiet: bool = False) -> Tuple[bool, bool]:
-    """
-    Update a node via git pull with error logging.
-    Returns: (success, was_updated)
-    """
-    name = node_name or node_path.name
+def run_cm_cli(
+    comfyui_path: Path,
+    action: str,
+    nodes: List[str],
+    quiet: bool = False
+) -> Tuple[bool, str]:
+    """Run cm-cli.py with given action and nodes."""
+    cm_cli = comfyui_path / "custom_nodes" / "ComfyUI-Manager" / "cm-cli.py"
 
-    # Check for updates with timeout
-    code, output = run_command(
-        ["git", "fetch", "--quiet"],
-        cwd=node_path,
-        quiet=True,
-        timeout=60
-    )
-    if code != 0:
-        log_error(name, "FETCH", output[:200] if output else "Fetch failed")
-        return False, False
+    if not cm_cli.exists():
+        return False, f"cm-cli.py not found at {cm_cli}"
 
-    # Get local and remote commits
-    code, local = run_command(["git", "rev-parse", "HEAD"], cwd=node_path, quiet=True, timeout=10)
-    if code != 0:
-        return False, False
-
-    code, remote = run_command(["git", "rev-parse", "@{u}"], cwd=node_path, quiet=True, timeout=10)
-    if code != 0:
-        # No upstream, skip update
-        return True, False
-
-    if local.strip() == remote.strip():
-        return True, False
-
-    # Pull updates
-    if not quiet:
-        print(f"      Updating...")
-
-    code, output = run_command(
-        ["git", "pull", "--quiet"],
-        cwd=node_path,
-        quiet=quiet,
-        timeout=120
-    )
-    if code == 0:
-        install_requirements(node_path, quiet)
-        return True, True
-
-    log_error(name, "PULL", output[:200] if output else "Pull failed")
-    return False, False
-
-
-def remove_node(node_path: Path, quiet: bool = False) -> bool:
-    """Remove a node directory."""
-    import shutil
+    cmd = [sys.executable, str(cm_cli), action] + nodes
 
     if not quiet:
-        print(f"      Removing {node_path.name}...")
+        print(f"      Running: cm-cli.py {action} {' '.join(nodes[:3])}{'...' if len(nodes) > 3 else ''}")
 
-    try:
-        shutil.rmtree(node_path)
-        return True
-    except Exception as e:
-        print(f"      Error removing: {e}")
-        return False
+    code, output = run_command(cmd, cwd=comfyui_path, timeout=600)
+
+    return code == 0, output
 
 
 def sync_nodes(
@@ -252,114 +199,106 @@ def sync_nodes(
     quiet: bool = False
 ) -> Dict[str, int]:
     """
-    Sync custom nodes based on config.
+    Sync custom nodes using cm-cli.
 
     Returns: {"installed": n, "updated": n, "removed": n, "skipped": n, "errors": n}
     """
-    # Clear error log at the start of each sync
     if not dry_run:
         clear_error_log()
 
     config = load_custom_nodes_config()
-    nodes = config.get("nodes", [])
-
     custom_nodes_dir = comfyui_path / "custom_nodes"
+
     if not custom_nodes_dir.exists():
         print(f"[ERROR] Custom nodes directory not found: {custom_nodes_dir}")
         sys.exit(1)
 
     stats = {"installed": 0, "updated": 0, "removed": 0, "skipped": 0, "errors": 0}
 
-    # Process enabled nodes
-    for node in nodes:
-        node_id = node.get("id", "")
-        name = node.get("name", node_id)
-        url = node.get("url", "")
-        enabled = node.get("enabled", False)
-        folder_override = node.get("folder", None)
+    # Step 1: Ensure ComfyUI-Manager is installed
+    manager_config = config.get("manager", {})
+    if not ensure_manager_installed(custom_nodes_dir, manager_config, quiet):
+        print("[ERROR] Failed to install ComfyUI-Manager. Cannot proceed.")
+        stats["errors"] += 1
+        return stats
 
-        if not url:
-            if not quiet:
-                print(f"  [SKIP] {name}: No URL")
-            stats["skipped"] += 1
-            continue
+    # Step 2: Get enabled and disabled nodes
+    nodes = config.get("nodes", [])
+    enabled_nodes = [n["name"] for n in nodes if n.get("enabled", False) and n.get("name")]
+    disabled_nodes = [n["name"] for n in nodes if not n.get("enabled", False) and n.get("name")]
 
-        folder_name = get_node_folder_name(url, folder_override)
-        node_path = custom_nodes_dir / folder_name
-        exists = node_path.exists()
+    # Step 3: Install/Update enabled nodes
+    if enabled_nodes:
+        if not quiet:
+            print(f"\n  [SYNC] {len(enabled_nodes)} enabled node(s)")
 
-        if enabled:
-            if exists:
-                # Update existing node
-                if not quiet:
-                    print(f"  [CHECK] {name}")
+        if dry_run:
+            for name in enabled_nodes:
+                print(f"      Would install/update: {name}")
+            stats["skipped"] += len(enabled_nodes)
+        else:
+            # cm-cli install handles both install and update
+            success, output = run_cm_cli(comfyui_path, "install", enabled_nodes, quiet)
 
-                if dry_run:
-                    if not quiet:
-                        print(f"      Would check for updates")
-                    stats["skipped"] += 1
-                else:
-                    success, was_updated = update_node(node_path, name, quiet)
-                    if success:
-                        if was_updated:
-                            if not quiet:
-                                print(f"      Updated!")
-                            stats["updated"] += 1
-                        else:
-                            if not quiet:
-                                print(f"      Already up-to-date")
-                            stats["skipped"] += 1
-                    else:
-                        if not quiet:
-                            print(f"      [ERROR] Update failed, continuing...")
-                        stats["errors"] += 1
-            else:
-                # Install new node
-                if not quiet:
-                    print(f"  [INSTALL] {name}")
-
-                if dry_run:
-                    if not quiet:
-                        print(f"      Would clone from {url}")
-                    stats["skipped"] += 1
-                else:
-                    if clone_node(url, node_path, name, quiet):
-                        if not quiet:
-                            print(f"      Installed!")
+            if success:
+                # Parse output to count what happened
+                for name in enabled_nodes:
+                    if f"installed" in output.lower() or f"already" in output.lower():
                         stats["installed"] += 1
                     else:
-                        if not quiet:
-                            print(f"      [ERROR] Install failed, continuing...")
-                        stats["errors"] += 1
-        else:
-            # Node is disabled
-            if exists and remove_disabled:
+                        stats["skipped"] += 1
                 if not quiet:
-                    print(f"  [REMOVE] {name}")
+                    print("      Done!")
+            else:
+                log_error("cm-cli install", "INSTALL", output[:200])
+                if not quiet:
+                    print(f"      [WARNING] Some nodes may have failed")
+                    print(f"      {output[:300]}")
+                stats["errors"] += len(enabled_nodes)
 
-                if node.get("required", False):
-                    if not quiet:
-                        print(f"      Skipping (required node)")
-                    stats["skipped"] += 1
-                elif dry_run:
-                    if not quiet:
-                        print(f"      Would remove {folder_name}")
-                    stats["skipped"] += 1
-                else:
-                    if remove_node(node_path, quiet):
-                        stats["removed"] += 1
-                    else:
-                        stats["errors"] += 1
-            elif exists:
+    # Step 4: Remove disabled nodes (if requested)
+    if remove_disabled and disabled_nodes:
+        if not quiet:
+            print(f"\n  [REMOVE] {len(disabled_nodes)} disabled node(s)")
+
+        if dry_run:
+            for name in disabled_nodes:
+                print(f"      Would uninstall: {name}")
+            stats["skipped"] += len(disabled_nodes)
+        else:
+            success, output = run_cm_cli(comfyui_path, "uninstall", disabled_nodes, quiet)
+
+            if success:
+                stats["removed"] += len(disabled_nodes)
                 if not quiet:
-                    print(f"  [DISABLED] {name} (still installed)")
-                stats["skipped"] += 1
+                    print("      Done!")
+            else:
+                log_error("cm-cli uninstall", "UNINSTALL", output[:200])
+                if not quiet:
+                    print(f"      [WARNING] Some nodes may have failed to uninstall")
+                stats["errors"] += len(disabled_nodes)
 
     return stats
 
 
+def update_all_nodes(comfyui_path: Path, quiet: bool = False) -> bool:
+    """Update all installed nodes using cm-cli."""
+    if not quiet:
+        print("  [UPDATE] Updating all installed nodes...")
+
+    success, output = run_cm_cli(comfyui_path, "update", ["all"], quiet)
+
+    if not quiet:
+        if success:
+            print("      Done!")
+        else:
+            print(f"      [ERROR] Update failed: {output[:200]}")
+
+    return success
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Sync ComfyUI custom nodes from config")
+    parser = argparse.ArgumentParser(description="Sync ComfyUI custom nodes using cm-cli")
     parser.add_argument(
         "--comfyui-path",
         type=str,
@@ -369,6 +308,11 @@ def main():
         "--remove-disabled",
         action="store_true",
         help="Remove nodes that are disabled in config"
+    )
+    parser.add_argument(
+        "--update-all",
+        action="store_true",
+        help="Update all installed nodes"
     )
     parser.add_argument(
         "--dry-run",
@@ -399,6 +343,10 @@ def main():
         if args.dry_run:
             print("[DRY RUN]")
         print()
+
+    if args.update_all:
+        success = update_all_nodes(comfyui_path, args.quiet)
+        sys.exit(0 if success else 1)
 
     stats = sync_nodes(
         comfyui_path,
