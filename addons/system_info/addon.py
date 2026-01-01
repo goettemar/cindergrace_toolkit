@@ -208,13 +208,23 @@ class SystemInfoAddon(BaseAddon):
     def restart_app(self) -> None:
         """Restart the toolkit application."""
         import threading
+        import signal
 
         def delayed_restart():
             import time
             time.sleep(1)
-            os.execv(sys.executable, [sys.executable, str(PROJECT_DIR / "app.py")] + sys.argv[1:])
+            # Start new process
+            subprocess.Popen(
+                [sys.executable, str(PROJECT_DIR / "app.py"), "--port", "7861"],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            time.sleep(1)
+            # Kill current process
+            os.kill(os.getpid(), signal.SIGTERM)
 
-        threading.Thread(target=delayed_restart, daemon=True).start()
+        threading.Thread(target=delayed_restart, daemon=False).start()
 
     def render(self) -> gr.Blocks:
         """Render the System Info UI."""
@@ -262,7 +272,7 @@ class SystemInfoAddon(BaseAddon):
                 result = self.upgrade_toolkit()
                 if "erfolgreich" in result:
                     self.restart_app()
-                    return result + "\n\n🔄 Neustart in 1 Sekunde..."
+                    return result + "\n\n🔄 Neustart... Bitte Seite in 3 Sekunden neu laden!"
                 return result
 
             refresh_btn.click(
