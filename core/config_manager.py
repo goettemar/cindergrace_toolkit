@@ -142,7 +142,10 @@ class ConfigManager:
 
     def is_runpod(self) -> bool:
         """Check if running on RunPod."""
-        return os.path.exists("/workspace") and os.path.exists("/runpod-volume")
+        # Check for RunPod environment variable or /workspace without /content (Colab)
+        return bool(os.environ.get("RUNPOD_POD_ID")) or (
+            os.path.exists("/workspace") and not os.path.exists("/content")
+        )
 
     def is_colab(self) -> bool:
         """Check if running on Google Colab."""

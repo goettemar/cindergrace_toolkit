@@ -387,10 +387,14 @@ def main():
     }
 
     # RunPod/Colab specific settings
-    if config.is_runpod() or config.is_colab():
+    if config.is_runpod():
         launch_kwargs["server_name"] = "0.0.0.0"
-        launch_kwargs["share"] = True
-        print(f"[Toolkit] Cloud mode: server_name=0.0.0.0, share=True")
+        launch_kwargs["share"] = False  # RunPod has its own proxy
+        print(f"[Toolkit] RunPod mode: server_name=0.0.0.0, share=False")
+    elif config.is_colab():
+        launch_kwargs["server_name"] = "0.0.0.0"
+        launch_kwargs["share"] = True  # Colab needs share for public access
+        print(f"[Toolkit] Colab mode: server_name=0.0.0.0, share=True")
 
     # Try to find an available port
     import socket
