@@ -615,6 +615,9 @@ class ModelDepotAddon(BaseAddon):
 
             status_output = gr.Textbox(label="Status", lines=3, interactive=False)
 
+            # Auto-refresh timer (every 3 seconds while downloads active)
+            auto_refresh_timer = gr.Timer(value=3, active=False)
+
             gr.Markdown("---")
 
             # === Delete Other Models (visible by default) ===
@@ -697,7 +700,7 @@ class ModelDepotAddon(BaseAddon):
 
             def on_download_all(wf_id, tier):
                 if not wf_id or not tier:
-                    return "Select workflow/tier first"
+                    return "Select workflow/tier first", gr.update(active=False)
 
                 models = self.get_models_for_workflow_tier(wf_id, tier)
                 started = []
@@ -711,13 +714,14 @@ class ModelDepotAddon(BaseAddon):
                         started.append(msg)
 
                 if not started:
-                    return "All models already present"
+                    return "All models already present", gr.update(active=False)
 
-                return "\n".join(started)
+                # Activate auto-refresh timer
+                return "\n".join(started), gr.update(active=True)
 
             def on_refresh(wf_id, tier):
                 if not wf_id or not tier:
-                    return [], ""
+                    return [], "", gr.update(active=False)
 
                 # Reload workflow_models.json to get latest changes
                 self._load_workflow_models()
@@ -725,10 +729,31 @@ class ModelDepotAddon(BaseAddon):
                 table = self.get_models_table(wf_id, tier)
 
                 status_lines = []
+                downloads_active = False
+                for fn, status in self._download_status.items():
+                    status_lines.append(f"{fn}: {status}")
+                    if fn in self._download_progress:
+                        downloads_active = True
+
+                # Deactivate timer if no downloads running
+                timer_update = gr.update(active=downloads_active)
+                return table, "\n".join(status_lines) if status_lines else "Data refreshed", timer_update
+
+            def on_auto_refresh(wf_id, tier):
+                """Auto-refresh triggered by timer."""
+                if not wf_id or not tier:
+                    return [], "", gr.update(active=False)
+
+                table = self.get_models_table(wf_id, tier)
+
+                status_lines = []
+                downloads_active = bool(self._download_progress)
                 for fn, status in self._download_status.items():
                     status_lines.append(f"{fn}: {status}")
 
-                return table, "\n".join(status_lines) if status_lines else "Data refreshed"
+                # Deactivate timer if no downloads running
+                timer_update = gr.update(active=downloads_active)
+                return table, "\n".join(status_lines) if status_lines else "", timer_update
 
             def on_scan_other(wf_id, tier):
                 if not wf_id or not tier:
@@ -792,13 +817,19 @@ class ModelDepotAddon(BaseAddon):
             download_all_btn.click(
                 on_download_all,
                 inputs=[current_workflow, current_tier],
-                outputs=[status_output],
+                outputs=[status_output, auto_refresh_timer],
             )
 
             refresh_btn.click(
                 on_refresh,
                 inputs=[current_workflow, current_tier],
-                outputs=[models_table, status_output],
+                outputs=[models_table, status_output, auto_refresh_timer],
+            )
+
+            auto_refresh_timer.tick(
+                on_auto_refresh,
+                inputs=[current_workflow, current_tier],
+                outputs=[models_table, status_output, auto_refresh_timer],
             )
 
             scan_other_btn.click(
