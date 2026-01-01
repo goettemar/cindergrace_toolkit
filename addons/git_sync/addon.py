@@ -90,6 +90,28 @@ class GitSyncAddon(BaseAddon):
             return "✅ Token gelöscht"
         return "Kein Token vorhanden"
 
+    def _git_pull(self) -> str:
+        """Pull latest changes from git."""
+        try:
+            result = subprocess.run(
+                ["git", "pull", "--ff-only"],
+                cwd=self.PROJECT_DIR,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if result.returncode == 0:
+                output = result.stdout.strip()
+                if "Already up to date" in output or "Bereits aktuell" in output:
+                    return "✅ Bereits aktuell - kein Update nötig"
+                return f"✅ Update erfolgreich:\n{output}\n\n**Zum Neustarten:**\n1. `pkill -f app.py`\n2. `cd /workspace/cindergrace_toolkit && python app.py --port 7861 &`"
+            else:
+                return f"❌ Update fehlgeschlagen:\n{result.stderr}"
+        except subprocess.TimeoutExpired:
+            return "❌ Timeout"
+        except Exception as e:
+            return f"❌ Fehler: {e}"
+
     def _get_git_status(self) -> str:
         """Get git status for data directory."""
         try:
@@ -132,11 +154,15 @@ class GitSyncAddon(BaseAddon):
             # Convert SSH to HTTPS with token if needed
             if original_url.startswith("git@github.com:"):
                 # SSH format: git@github.com:user/repo.git
-                repo_path = original_url.replace("git@github.com:", "").rstrip(".git")
+                repo_path = original_url.replace("git@github.com:", "")
+                if repo_path.endswith(".git"):
+                    repo_path = repo_path[:-4]  # Remove ".git" suffix properly
                 auth_url = f"https://{token}@github.com/{repo_path}.git"
             elif original_url.startswith("https://github.com/"):
                 # HTTPS format
-                repo_path = original_url.replace("https://github.com/", "").rstrip(".git")
+                repo_path = original_url.replace("https://github.com/", "")
+                if repo_path.endswith(".git"):
+                    repo_path = repo_path[:-4]  # Remove ".git" suffix properly
                 auth_url = f"https://{token}@github.com/{repo_path}.git"
             else:
                 return f"❌ Unbekanntes URL-Format: {original_url}"
@@ -196,7 +222,20 @@ class GitSyncAddon(BaseAddon):
 
         with gr.Blocks() as ui:
             gr.Markdown("## 🔄 Git Sync")
-            gr.Markdown("*Push Workflow-Änderungen zu GitHub*")
+            gr.Markdown("*Pull Updates & Push Workflow-Änderungen*")
+
+            # === Git Pull (Update Toolkit) ===
+            gr.Markdown("### ⬇️ Toolkit Update")
+            with gr.Row():
+                pull_btn = gr.Button("⬇️ Git Pull (Update holen)", variant="secondary", scale=2)
+            pull_result = gr.Textbox(
+                label="Pull Status",
+                lines=4,
+                interactive=False,
+                value="",
+            )
+
+            gr.Markdown("---")
 
             # === Token Status ===
             token_status = "✅ Token vorhanden" if self._has_token() else "❌ Kein Token"
@@ -282,7 +321,14 @@ class GitSyncAddon(BaseAddon):
                     message = "Update from toolkit"
                 return self._git_push(password, message)
 
+            def on_pull():
+                return self._git_pull()
+
             # === Wire Events ===
+            pull_btn.click(
+                on_pull,
+                outputs=[pull_result],
+            )
             save_token_btn.click(
                 on_save_token,
                 inputs=[token_input, new_password],

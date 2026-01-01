@@ -188,33 +188,13 @@ class SystemInfoAddon(BaseAddon):
 
         return output
 
-    def upgrade_toolkit(self) -> str:
-        """Pull latest changes from git."""
-        try:
-            result = subprocess.run(
-                ["git", "pull", "--ff-only"],
-                cwd=PROJECT_DIR,
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-            if result.returncode == 0:
-                return f"✅ Update erfolgreich:\n{result.stdout}"
-            else:
-                return f"❌ Update fehlgeschlagen:\n{result.stderr}"
-        except Exception as e:
-            return f"❌ Fehler: {e}"
-
-
     def render(self) -> gr.Blocks:
         """Render the System Info UI."""
 
         with gr.Blocks() as ui:
             gr.Markdown("## 💻 System Info")
 
-            with gr.Row():
-                refresh_btn = gr.Button("🔄 Aktualisieren", variant="primary", scale=2)
-                upgrade_btn = gr.Button("⬆️ Git Pull", variant="secondary", scale=1)
+            refresh_btn = gr.Button("🔄 Aktualisieren", variant="primary")
 
             with gr.Row():
                 with gr.Column():
@@ -229,15 +209,7 @@ class SystemInfoAddon(BaseAddon):
                     env_info = gr.Markdown(self.get_environment())
 
             with gr.Row():
-                with gr.Column():
-                    toolkit_info = gr.Markdown(self.get_toolkit_info())
-                with gr.Column():
-                    upgrade_output = gr.Textbox(
-                        label="Upgrade Status",
-                        lines=4,
-                        interactive=False,
-                        value="",
-                    )
+                toolkit_info = gr.Markdown(self.get_toolkit_info())
 
             def on_refresh():
                 return (
@@ -248,20 +220,9 @@ class SystemInfoAddon(BaseAddon):
                     self.get_toolkit_info(),
                 )
 
-            def on_upgrade():
-                result = self.upgrade_toolkit()
-                if "erfolgreich" in result:
-                    return result + "\n\n✅ Update fertig! Zum Neustarten:\n1. pkill -f app.py\n2. cd /workspace/cindergrace_toolkit && python app.py --port 7861 &"
-                return result
-
             refresh_btn.click(
                 on_refresh,
                 outputs=[gpu_info, mem_info, disk_info, env_info, toolkit_info],
-            )
-
-            upgrade_btn.click(
-                on_upgrade,
-                outputs=[upgrade_output],
             )
 
         return ui
