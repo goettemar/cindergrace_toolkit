@@ -1,14 +1,15 @@
 """Parse ComfyUI workflow JSON files to extract model references."""
 
 import json
-from pathlib import Path
-from typing import Dict, List, Set, Any, Optional
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 
 @dataclass
 class ParsedModel:
     """A model reference found in a workflow."""
+
     filename: str
     node_type: str
     node_id: str
@@ -23,34 +24,26 @@ MODEL_LOADER_NODES = {
     "UnetLoaderGGUF": ("unet_name", "diffusion_models"),
     "WanI2VLoader": ("model", "diffusion_models/wan"),
     "DownloadAndLoadWanModel": ("model", "diffusion_models/wan"),
-
     # VAE
     "VAELoader": ("vae_name", "vae"),
-
     # Checkpoints (combined model + vae)
     "CheckpointLoaderSimple": ("ckpt_name", "checkpoints"),
     "CheckpointLoader": ("ckpt_name", "checkpoints"),
-
     # CLIP / Text Encoders
     "CLIPLoader": ("clip_name", "text_encoders"),
     "DualCLIPLoader": ("clip_name1", "text_encoders"),  # Also has clip_name2
     "CLIPVisionLoader": ("clip_name", "clip_vision"),
     "UNETLoaderNF4": ("unet_name", "diffusion_models"),
-
     # LoRA
     "LoraLoader": ("lora_name", "loras"),
     "LoraLoaderModelOnly": ("lora_name", "loras"),
-
     # ControlNet
     "ControlNetLoader": ("control_net_name", "controlnet"),
-
     # Upscale models
     "UpscaleModelLoader": ("model_name", "upscale_models"),
-
     # LLM / Vision models
     "DownloadAndLoadFlorence2Model": ("model", "LLM"),
     "Florence2ModelLoader": ("model_name", "LLM"),
-
     # LTX Video
     "LTXVLoader": ("ckpt_name", "checkpoints"),
 }
@@ -62,7 +55,7 @@ SECONDARY_INPUTS = {
 }
 
 
-def parse_workflow(workflow_path: Path) -> List[ParsedModel]:
+def parse_workflow(workflow_path: Path) -> list[ParsedModel]:
     """Parse a ComfyUI workflow and extract all model references.
 
     Args:
@@ -75,14 +68,14 @@ def parse_workflow(workflow_path: Path) -> List[ParsedModel]:
         return []
 
     try:
-        with open(workflow_path, "r", encoding="utf-8") as f:
+        with open(workflow_path, encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
         print(f"[Parser] Error loading workflow: {e}")
         return []
 
-    models: List[ParsedModel] = []
-    seen_filenames: Set[str] = set()
+    models: list[ParsedModel] = []
+    seen_filenames: set[str] = set()
 
     # Handle both workflow formats
     # Format 1: {"nodes": [...], "links": [...]} (API format)
@@ -132,13 +125,15 @@ def parse_workflow(workflow_path: Path) -> List[ParsedModel]:
 
         if filename and filename not in seen_filenames:
             seen_filenames.add(filename)
-            models.append(ParsedModel(
-                filename=filename,
-                node_type=node_type,
-                node_id=node_id,
-                input_name=input_name,
-                target_path=target_path,
-            ))
+            models.append(
+                ParsedModel(
+                    filename=filename,
+                    node_type=node_type,
+                    node_id=node_id,
+                    input_name=input_name,
+                    target_path=target_path,
+                )
+            )
 
         # Check secondary inputs
         if node_type in SECONDARY_INPUTS:
@@ -152,22 +147,24 @@ def parse_workflow(workflow_path: Path) -> List[ParsedModel]:
 
                 if sec_filename and sec_filename not in seen_filenames:
                     seen_filenames.add(sec_filename)
-                    models.append(ParsedModel(
-                        filename=sec_filename,
-                        node_type=node_type,
-                        node_id=node_id,
-                        input_name=sec_input,
-                        target_path=sec_path,
-                    ))
+                    models.append(
+                        ParsedModel(
+                            filename=sec_filename,
+                            node_type=node_type,
+                            node_id=node_id,
+                            input_name=sec_input,
+                            target_path=sec_path,
+                        )
+                    )
 
     return models
 
 
-def parse_workflow_from_dict(data: Dict[str, Any]) -> List[ParsedModel]:
+def parse_workflow_from_dict(data: dict[str, Any]) -> list[ParsedModel]:
     """Parse workflow data already loaded as dict."""
     # Same logic as parse_workflow but takes dict directly
-    models: List[ParsedModel] = []
-    seen_filenames: Set[str] = set()
+    models: list[ParsedModel] = []
+    seen_filenames: set[str] = set()
 
     nodes = []
 
@@ -205,12 +202,14 @@ def parse_workflow_from_dict(data: Dict[str, Any]) -> List[ParsedModel]:
 
         if filename and filename not in seen_filenames:
             seen_filenames.add(filename)
-            models.append(ParsedModel(
-                filename=filename,
-                node_type=node_type,
-                node_id=node_id,
-                input_name=input_name,
-                target_path=target_path,
-            ))
+            models.append(
+                ParsedModel(
+                    filename=filename,
+                    node_type=node_type,
+                    node_id=node_id,
+                    input_name=input_name,
+                    target_path=target_path,
+                )
+            )
 
     return models

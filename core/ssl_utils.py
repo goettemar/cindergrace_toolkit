@@ -3,10 +3,9 @@
 import json
 import ssl
 from pathlib import Path
-from typing import Optional
 
 
-def get_ssl_context(config_dir: Optional[Path] = None) -> ssl.SSLContext:
+def get_ssl_context(config_dir: Path | None = None) -> ssl.SSLContext:
     """Get SSL context based on configuration.
 
     SSL verification is ENABLED by default. To disable (INSECURE):
@@ -35,7 +34,7 @@ def get_ssl_context(config_dir: Optional[Path] = None) -> ssl.SSLContext:
     ]:
         if config_path.exists():
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     config = json.load(f)
                     disable_ssl = config.get("security", {}).get("disable_ssl_verify", False)
                     break

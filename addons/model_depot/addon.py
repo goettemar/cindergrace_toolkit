@@ -4,10 +4,10 @@ import json
 import os
 import shutil
 import threading
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Set
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 import gradio as gr
 
@@ -16,6 +16,7 @@ from core.base_addon import BaseAddon
 
 class ModelStatus(Enum):
     """Status of a model file."""
+
     MISSING = "missing"
     PRESENT = "present"
     BACKUP_ONLY = "backup"
@@ -26,6 +27,7 @@ class ModelStatus(Enum):
 @dataclass
 class ModelInfo:
     """Model information from workflow_models.json."""
+
     id: str
     filename: str
     url: str
@@ -36,7 +38,7 @@ class ModelInfo:
     backup_size: int = 0  # Actual size in backup
 
 
-def _sanitize_path(base_path: Path, target_path: str, filename: str) -> Optional[Path]:
+def _sanitize_path(base_path: Path, target_path: str, filename: str) -> Path | None:
     """Sanitize and validate a file path to prevent directory traversal.
 
     Args:
@@ -83,9 +85,17 @@ class ModelDepotAddon(BaseAddon):
 
     # Allowed target folders (whitelist)
     ALLOWED_FOLDERS = {
-        "checkpoints", "clip_vision", "controlnet", "diffusion_models",
-        "diffusion_models/wan", "loras", "loras/wan", "text_encoders",
-        "upscale_models", "vae", "LLM"
+        "checkpoints",
+        "clip_vision",
+        "controlnet",
+        "diffusion_models",
+        "diffusion_models/wan",
+        "loras",
+        "loras/wan",
+        "text_encoders",
+        "upscale_models",
+        "vae",
+        "LLM",
     }
 
     def __init__(self):
@@ -94,15 +104,15 @@ class ModelDepotAddon(BaseAddon):
         self.version = "3.3.0"  # Security update
         self.icon = "📦"
 
-        self._config: Dict[str, Any] = {}
-        self._workflow_models: Dict[str, Any] = {}
-        self._comfyui_path: Optional[Path] = None
-        self._models_path: Optional[Path] = None
-        self._workflows_path: Optional[Path] = None
-        self._backup_path: Optional[Path] = None
+        self._config: dict[str, Any] = {}
+        self._workflow_models: dict[str, Any] = {}
+        self._comfyui_path: Path | None = None
+        self._models_path: Path | None = None
+        self._workflows_path: Path | None = None
+        self._backup_path: Path | None = None
 
-        self._download_progress: Dict[str, float] = {}
-        self._download_status: Dict[str, str] = {}
+        self._download_progress: dict[str, float] = {}
+        self._download_status: dict[str, str] = {}
 
     def get_tab_name(self) -> str:
         return f"{self.icon} {self.name}"
@@ -118,11 +128,11 @@ class ModelDepotAddon(BaseAddon):
 
         self._config_source = None
         if user_file.exists():
-            with open(user_file, "r", encoding="utf-8") as f:
+            with open(user_file, encoding="utf-8") as f:
                 self._config = json.load(f)
             self._config_source = ".config/config.json"
         elif default_file.exists():
-            with open(default_file, "r", encoding="utf-8") as f:
+            with open(default_file, encoding="utf-8") as f:
                 self._config = json.load(f)
             self._config_source = "config/config.json"
 
@@ -137,7 +147,7 @@ class ModelDepotAddon(BaseAddon):
 
         git_file = self.DATA_DIR / "workflow_models.json"
         if git_file.exists():
-            with open(git_file, "r", encoding="utf-8") as f:
+            with open(git_file, encoding="utf-8") as f:
                 self._workflow_models = json.load(f)
             self._models_source = "data/workflow_models.json"
         else:
@@ -161,7 +171,9 @@ class ModelDepotAddon(BaseAddon):
             self._comfyui_path = Path(comfy_path)
             self._models_path = self._comfyui_path / "models"
 
-            wf_template = paths_config.get("workflows", {}).get(env, "{comfyui}/user/default/workflows")
+            wf_template = paths_config.get("workflows", {}).get(
+                env, "{comfyui}/user/default/workflows"
+            )
             wf_path = wf_template.replace("{comfyui}", comfy_path)
             if os.path.exists(wf_path):
                 self._workflows_path = Path(wf_path)
@@ -196,12 +208,13 @@ class ModelDepotAddon(BaseAddon):
             mb = bytes_val / (1024**2)
             return f"{mb:.0f} MB"
 
-        def get_disk_status(path: Optional[Path], name: str) -> str:
+        def get_disk_status(path: Path | None, name: str) -> str:
             if not path or not path.exists():
                 return f"- {name}: Not found"
 
             try:
                 import shutil
+
                 usage = shutil.disk_usage(str(path))
                 free = format_size(usage.free)
                 total = format_size(usage.total)
@@ -239,7 +252,7 @@ class ModelDepotAddon(BaseAddon):
 
         return "\n".join(lines)
 
-    def get_workflows(self) -> List[Tuple[str, str]]:
+    def get_workflows(self) -> list[tuple[str, str]]:
         """Get list of workflows with model definitions."""
         result = []
         for wf_id, wf_data in self._workflow_models.get("workflows", {}).items():
@@ -248,7 +261,7 @@ class ModelDepotAddon(BaseAddon):
             result.append((f"{name} ({category})", wf_id))
         return sorted(result, key=lambda x: x[0])
 
-    def get_vram_tiers_for_workflow(self, workflow_id: str) -> List[str]:
+    def get_vram_tiers_for_workflow(self, workflow_id: str) -> list[str]:
         """Get available VRAM tiers for a workflow."""
         wf = self._workflow_models.get("workflows", {}).get(workflow_id, {})
         model_sets = wf.get("model_sets", {})
@@ -262,9 +275,7 @@ class ModelDepotAddon(BaseAddon):
 
         return sorted(available_tiers)
 
-    def get_models_for_workflow_tier(
-        self, workflow_id: str, tier: str
-    ) -> List[ModelInfo]:
+    def get_models_for_workflow_tier(self, workflow_id: str, tier: str) -> list[ModelInfo]:
         """Get models for a workflow and VRAM tier."""
         wf = self._workflow_models.get("workflows", {}).get(workflow_id, {})
         model_sets = wf.get("model_sets", {})
@@ -316,7 +327,7 @@ class ModelDepotAddon(BaseAddon):
                 if model.status == ModelStatus.MISSING:
                     model.status = ModelStatus.BACKUP_ONLY
 
-    def get_models_table(self, workflow_id: str, tier: str) -> List[List[Any]]:
+    def get_models_table(self, workflow_id: str, tier: str) -> list[list[Any]]:
         """Get models as table data: [Status, Dateiname, Ordner, MB, Aktion]"""
         models = self.get_models_for_workflow_tier(workflow_id, tier)
 
@@ -338,13 +349,15 @@ class ModelDepotAddon(BaseAddon):
             elif m.status == ModelStatus.PRESENT:
                 action = "Cleanup"
 
-            table.append([
-                status_icon,
-                m.filename,
-                m.target_path,
-                m.size_mb,
-                action,
-            ])
+            table.append(
+                [
+                    status_icon,
+                    m.filename,
+                    m.target_path,
+                    m.size_mb,
+                    action,
+                ]
+            )
 
         return table
 
@@ -435,7 +448,9 @@ class ModelDepotAddon(BaseAddon):
                                 self._download_progress[filename] = progress
                                 mb_done = downloaded / (1024 * 1024)
                                 mb_total = total_size / (1024 * 1024)
-                                self._download_status[filename] = f"⬇️ {mb_done:.0f}/{mb_total:.0f} MB"
+                                self._download_status[filename] = (
+                                    f"⬇️ {mb_done:.0f}/{mb_total:.0f} MB"
+                                )
 
                 if backup_file:
                     self._download_status[filename] = "Backing up..."
@@ -486,7 +501,7 @@ class ModelDepotAddon(BaseAddon):
         shutil.copy2(backup_file, target_file)
         return f"Restored: {filename}"
 
-    def find_other_models(self, workflow_id: str, tier: str) -> List[Tuple[str, str, int]]:
+    def find_other_models(self, workflow_id: str, tier: str) -> list[tuple[str, str, int]]:
         """Find models in ComfyUI that are NOT part of the selected workflow/tier.
 
         Returns: [(filename, target_path, size_mb), ...]
@@ -521,7 +536,7 @@ class ModelDepotAddon(BaseAddon):
 
         return sorted(other_models)
 
-    def delete_other_models(self, filenames: List[Tuple[str, str]]) -> List[str]:
+    def delete_other_models(self, filenames: list[tuple[str, str]]) -> list[str]:
         """Delete other models (with backup if configured).
 
         Args:
@@ -622,7 +637,9 @@ class ModelDepotAddon(BaseAddon):
 
             # === Delete Other Models (visible by default) ===
             gr.Markdown("### Delete Other Models")
-            gr.Markdown("*Models in ComfyUI/models that are NOT part of the selected workflow/tier*")
+            gr.Markdown(
+                "*Models in ComfyUI/models that are NOT part of the selected workflow/tier*"
+            )
 
             other_models_table = gr.Dataframe(
                 headers=["Filename", "Folder", "MB"],
@@ -657,7 +674,11 @@ class ModelDepotAddon(BaseAddon):
 
             # === Config Info ===
             with gr.Accordion("Data Sources & Storage", open=True):
-                env_name = "runpod" if os.path.exists("/workspace") else ("colab" if os.path.exists("/content") else "local")
+                env_name = (
+                    "runpod"
+                    if os.path.exists("/workspace")
+                    else ("colab" if os.path.exists("/content") else "local")
+                )
                 config_info = f"**Environment:** `{env_name}`\n\n"
                 config_info += f"**Config:** `{self._config_source or 'none'}`\n\n"
                 config_info += f"**Models JSON:** `{self._models_source}`\n\n"
@@ -683,7 +704,9 @@ class ModelDepotAddon(BaseAddon):
                 self._load_workflow_models()
 
                 tiers = self.get_vram_tiers_for_workflow(wf_id)
-                tier_choices = [(f"{t} ({'/'.join(str(v) for v in self.VRAM_TIERS[t])}GB)", t) for t in tiers]
+                tier_choices = [
+                    (f"{t} ({'/'.join(str(v) for v in self.VRAM_TIERS[t])}GB)", t) for t in tiers
+                ]
 
                 return (
                     gr.update(choices=tier_choices, value=tiers[0] if tiers else None),
@@ -737,7 +760,11 @@ class ModelDepotAddon(BaseAddon):
 
                 # Deactivate timer if no downloads running
                 timer_update = gr.update(active=downloads_active)
-                return table, "\n".join(status_lines) if status_lines else "Data refreshed", timer_update
+                return (
+                    table,
+                    "\n".join(status_lines) if status_lines else "Data refreshed",
+                    timer_update,
+                )
 
             def on_auto_refresh(wf_id, tier):
                 """Auto-refresh triggered by timer."""

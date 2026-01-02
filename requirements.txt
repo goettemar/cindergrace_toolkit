@@ -1,7 +1,8 @@
 # Cindergrace Toolkit Requirements
+# Aktualisiert: 2026-01-02 (Security Fixes)
 
 # Core
-gradio>=4.0.0
+gradio>=5.11.0
 
 # Optional: For faster downloads
 # aiohttp>=3.9.0

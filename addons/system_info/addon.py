@@ -9,7 +9,6 @@ import gradio as gr
 
 from core.base_addon import BaseAddon
 
-
 PROJECT_DIR = Path(__file__).parent.parent.parent
 
 
@@ -36,8 +35,11 @@ class SystemInfoAddon(BaseAddon):
         """Get GPU information using nvidia-smi."""
         try:
             result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free,temperature.gpu",
-                 "--format=csv,noheader,nounits"],
+                [
+                    "nvidia-smi",
+                    "--query-gpu=name,memory.total,memory.used,memory.free,temperature.gpu",
+                    "--format=csv,noheader,nounits",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -60,7 +62,7 @@ class SystemInfoAddon(BaseAddon):
     def get_memory_info(self) -> str:
         """Get system memory information."""
         try:
-            with open("/proc/meminfo", "r") as f:
+            with open("/proc/meminfo") as f:
                 lines = f.readlines()
 
             mem_info = {}
@@ -119,7 +121,9 @@ class SystemInfoAddon(BaseAddon):
         """Detect current environment."""
         output = "### Umgebung\n\n"
 
-        if os.environ.get("RUNPOD_POD_ID") or (os.path.exists("/workspace") and not os.path.exists("/content")):
+        if os.environ.get("RUNPOD_POD_ID") or (
+            os.path.exists("/workspace") and not os.path.exists("/content")
+        ):
             output += "**Plattform:** 🚀 RunPod\n"
             pod_id = os.environ.get("RUNPOD_POD_ID", "unbekannt")
             output += f"- Pod ID: `{pod_id}`\n"

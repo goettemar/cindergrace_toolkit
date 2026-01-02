@@ -3,9 +3,7 @@
 import json
 import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import patch
 
 
 class TestConfigManager:
@@ -13,12 +11,22 @@ class TestConfigManager:
 
     def test_default_settings(self, temp_config_dir, monkeypatch):
         """Should have sensible default settings."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
+
         config = ConfigManager()
 
         assert config.get("download_parallel") == 2
@@ -27,12 +35,22 @@ class TestConfigManager:
 
     def test_get_nonexistent_key_returns_default(self, temp_config_dir, monkeypatch):
         """Getting a non-existent key should return the provided default."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
+
         config = ConfigManager()
 
         assert config.get("nonexistent_key") is None
@@ -41,12 +59,22 @@ class TestConfigManager:
 
     def test_set_and_get_value(self, temp_config_dir, monkeypatch):
         """Should be able to set and retrieve values."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
+
         config = ConfigManager()
 
         config.set("custom_key", "custom_value")
@@ -58,12 +86,19 @@ class TestConfigManager:
     def test_settings_persisted_to_file(self, temp_config_dir, monkeypatch):
         """Settings should be saved to file."""
         settings_file = temp_config_dir["config"] / "settings.json"
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
         monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", settings_file)
 
         from core.config_manager import ConfigManager
+
         config = ConfigManager()
         config.set("test_key", "test_value")
 
@@ -75,12 +110,22 @@ class TestConfigManager:
 
     def test_get_all_returns_copy(self, temp_config_dir, monkeypatch):
         """get_all() should return a copy, not the original dict."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
+
         config = ConfigManager()
 
         all_settings = config.get_all()
@@ -91,12 +136,22 @@ class TestConfigManager:
 
     def test_reset_restores_defaults(self, temp_config_dir, monkeypatch):
         """reset() should restore default settings."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
+
         config = ConfigManager()
 
         config.set("custom_key", "custom_value")
@@ -113,10 +168,19 @@ class TestEnvironmentDetection:
 
     def test_is_local_by_default(self, temp_config_dir, monkeypatch):
         """Should detect local environment by default."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
 
@@ -130,16 +194,27 @@ class TestEnvironmentDetection:
 
     def test_detects_runpod(self, temp_config_dir, monkeypatch):
         """Should detect RunPod environment."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
 
         with patch("os.path.exists") as mock_exists:
+
             def exists_side_effect(path):
                 return path in ["/workspace", "/runpod-volume"]
+
             mock_exists.side_effect = exists_side_effect
 
             config = ConfigManager()
@@ -148,16 +223,27 @@ class TestEnvironmentDetection:
 
     def test_detects_colab(self, temp_config_dir, monkeypatch):
         """Should detect Google Colab environment."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
 
         with patch("os.path.exists") as mock_exists:
+
             def exists_side_effect(path):
                 return path == "/content"
+
             mock_exists.side_effect = exists_side_effect
 
             with patch.dict(os.environ, {"COLAB_GPU": "1"}):
@@ -174,24 +260,38 @@ class TestComfyUIPathDetection:
         # Write config with path
         config_path = temp_config_dir["config"] / "config.json"
         with open(config_path, "w") as f:
-            json.dump({
-                "paths": {
-                    "comfyui": {
-                        "local": str(mock_comfyui_path),
+            json.dump(
+                {
+                    "paths": {
+                        "comfyui": {
+                            "local": str(mock_comfyui_path),
+                        }
                     }
-                }
-            }, f)
+                },
+                f,
+            )
 
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
 
         with patch("os.path.exists") as mock_exists:
+
             def exists_side_effect(path):
                 return path == str(mock_comfyui_path) or Path(path).exists()
+
             mock_exists.side_effect = exists_side_effect
 
             config = ConfigManager()
@@ -202,18 +302,30 @@ class TestComfyUIPathDetection:
         """Should get models path from ComfyUI path."""
         config_path = temp_config_dir["config"] / "config.json"
         with open(config_path, "w") as f:
-            json.dump({
-                "paths": {
-                    "comfyui": {
-                        "local": str(mock_comfyui_path),
+            json.dump(
+                {
+                    "paths": {
+                        "comfyui": {
+                            "local": str(mock_comfyui_path),
+                        }
                     }
-                }
-            }, f)
+                },
+                f,
+            )
 
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
 
@@ -227,10 +339,19 @@ class TestComfyUIPathDetection:
 
     def test_get_comfyui_path_returns_none_when_not_found(self, temp_config_dir, monkeypatch):
         """Should return None when ComfyUI is not found."""
-        monkeypatch.setattr("core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"])
-        monkeypatch.setattr("core.config_manager.ConfigManager.SETTINGS_FILE", temp_config_dir["config"] / "settings.json")
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.PROJECT_DIR", temp_config_dir["root"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.CONFIG_DIR", temp_config_dir["config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.USER_CONFIG_DIR", temp_config_dir["user_config"]
+        )
+        monkeypatch.setattr(
+            "core.config_manager.ConfigManager.SETTINGS_FILE",
+            temp_config_dir["config"] / "settings.json",
+        )
 
         from core.config_manager import ConfigManager
 

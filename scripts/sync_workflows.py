@@ -15,8 +15,6 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
 
 # Find project root (where data/ is located)
 SCRIPT_DIR = Path(__file__).parent
@@ -26,12 +24,12 @@ CONFIG_DIR = PROJECT_DIR / "config"
 WORKFLOWS_DIR = DATA_DIR / "workflows"
 
 
-def detect_comfyui_path() -> Optional[Path]:
+def detect_comfyui_path() -> Path | None:
     """Auto-detect ComfyUI path based on environment."""
     candidates = [
         Path("/workspace/ComfyUI"),  # RunPod
-        Path("/content/ComfyUI"),    # Colab
-        Path.home() / "ComfyUI",     # Local
+        Path("/content/ComfyUI"),  # Colab
+        Path.home() / "ComfyUI",  # Local
         Path.home() / "projekte" / "ComfyUI",  # Local alt
     ]
 
@@ -39,7 +37,7 @@ def detect_comfyui_path() -> Optional[Path]:
     for config_path in [PROJECT_DIR / ".config" / "config.json", CONFIG_DIR / "config.json"]:
         if config_path.exists():
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     config = json.load(f)
 
                 paths = config.get("paths", {}).get("comfyui", {})
@@ -71,7 +69,7 @@ def get_workflows_target(comfyui_path: Path) -> Path:
     return comfyui_path / "user" / "default" / "workflows"
 
 
-def get_source_workflows() -> List[Path]:
+def get_source_workflows() -> list[Path]:
     """Get all workflow JSON files from data/workflows/."""
     if not WORKFLOWS_DIR.exists():
         return []
@@ -104,10 +102,8 @@ def file_needs_update(source: Path, target: Path) -> bool:
 
 
 def sync_workflows(
-    comfyui_path: Path,
-    dry_run: bool = False,
-    quiet: bool = False
-) -> Dict[str, int]:
+    comfyui_path: Path, dry_run: bool = False, quiet: bool = False
+) -> dict[str, int]:
     """
     Sync workflows from toolkit to ComfyUI.
 
@@ -189,26 +185,12 @@ def list_workflows(comfyui_path: Path, quiet: bool = False) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Sync workflows from toolkit to ComfyUI")
+    parser.add_argument("--comfyui-path", type=str, help="Path to ComfyUI installation")
     parser.add_argument(
-        "--comfyui-path",
-        type=str,
-        help="Path to ComfyUI installation"
+        "--dry-run", action="store_true", help="Show what would be done without making changes"
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be done without making changes"
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List workflows in source and target"
-    )
-    parser.add_argument(
-        "--quiet", "-q",
-        action="store_true",
-        help="Minimal output"
-    )
+    parser.add_argument("--list", action="store_true", help="List workflows in source and target")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Minimal output")
 
     args = parser.parse_args()
 
@@ -234,16 +216,14 @@ def main():
         list_workflows(comfyui_path, args.quiet)
         return
 
-    stats = sync_workflows(
-        comfyui_path,
-        dry_run=args.dry_run,
-        quiet=args.quiet
-    )
+    stats = sync_workflows(comfyui_path, dry_run=args.dry_run, quiet=args.quiet)
 
     if not args.quiet:
         print()
-        print(f"Done: {stats['copied']} copied, {stats['updated']} updated, "
-              f"{stats['skipped']} skipped, {stats['errors']} errors")
+        print(
+            f"Done: {stats['copied']} copied, {stats['updated']} updated, "
+            f"{stats['skipped']} skipped, {stats['errors']} errors"
+        )
 
     sys.exit(0 if stats["errors"] == 0 else 1)
 

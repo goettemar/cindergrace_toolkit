@@ -2,13 +2,14 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import gradio as gr
 
 from core.base_addon import BaseAddon
-from .workflow_parser import parse_workflow
+
 from .url_database import suggest_url
+from .workflow_parser import parse_workflow
 
 
 class WorkflowManagerAddon(BaseAddon):
@@ -24,9 +25,17 @@ class WorkflowManagerAddon(BaseAddon):
 
     # Allowed target folders (shared with Model Depot for consistency)
     ALLOWED_FOLDERS = {
-        "checkpoints", "clip_vision", "controlnet", "diffusion_models",
-        "diffusion_models/wan", "loras", "loras/wan", "text_encoders",
-        "upscale_models", "vae", "LLM"
+        "checkpoints",
+        "clip_vision",
+        "controlnet",
+        "diffusion_models",
+        "diffusion_models/wan",
+        "loras",
+        "loras/wan",
+        "text_encoders",
+        "upscale_models",
+        "vae",
+        "LLM",
     }
 
     def __init__(self):
@@ -35,9 +44,9 @@ class WorkflowManagerAddon(BaseAddon):
         self.version = "5.1.0"
         self.icon = "📋"
 
-        self._config: Dict[str, Any] = {}
-        self._workflow_models: Dict[str, Any] = {}
-        self._workflows_path: Optional[Path] = None
+        self._config: dict[str, Any] = {}
+        self._workflow_models: dict[str, Any] = {}
+        self._workflows_path: Path | None = None
 
     def get_tab_name(self) -> str:
         return f"{self.icon} {self.name}"
@@ -52,10 +61,10 @@ class WorkflowManagerAddon(BaseAddon):
         default_file = self.CONFIG_DIR / "config.json"
 
         if user_file.exists():
-            with open(user_file, "r", encoding="utf-8") as f:
+            with open(user_file, encoding="utf-8") as f:
                 self._config = json.load(f)
         elif default_file.exists():
-            with open(default_file, "r", encoding="utf-8") as f:
+            with open(default_file, encoding="utf-8") as f:
                 self._config = json.load(f)
 
     def _load_workflow_models(self) -> None:
@@ -69,7 +78,7 @@ class WorkflowManagerAddon(BaseAddon):
 
         git_file = self.DATA_DIR / "workflow_models.json"
         if git_file.exists():
-            with open(git_file, "r", encoding="utf-8") as f:
+            with open(git_file, encoding="utf-8") as f:
                 self._workflow_models = json.load(f)
 
     def _save_workflow_models(self) -> str:
@@ -82,6 +91,7 @@ class WorkflowManagerAddon(BaseAddon):
 
     def _detect_paths(self) -> None:
         import os
+
         paths_config = self._config.get("paths", {})
 
         if os.path.exists("/workspace"):
@@ -98,12 +108,14 @@ class WorkflowManagerAddon(BaseAddon):
         if comfy_path and os.path.exists(comfy_path):
             self._comfyui_path = Path(comfy_path)
 
-            wf_template = paths_config.get("workflows", {}).get(env, "{comfyui}/user/default/workflows")
+            wf_template = paths_config.get("workflows", {}).get(
+                env, "{comfyui}/user/default/workflows"
+            )
             wf_path = wf_template.replace("{comfyui}", comfy_path)
             if os.path.exists(wf_path):
                 self._workflows_path = Path(wf_path)
 
-    def get_target_folders(self) -> List[str]:
+    def get_target_folders(self) -> list[str]:
         """Get list of target folders from JSON."""
         return self._workflow_models.get("target_folders", [])
 
@@ -123,7 +135,7 @@ class WorkflowManagerAddon(BaseAddon):
 
         return False
 
-    def add_target_folder(self, folder: str) -> Tuple[str, List[str]]:
+    def add_target_folder(self, folder: str) -> tuple[str, list[str]]:
         """Add a new target folder."""
         folder = folder.strip()
         if not folder:
@@ -143,7 +155,7 @@ class WorkflowManagerAddon(BaseAddon):
             return f"Added '{folder}'", folders
         return f"'{folder}' already exists", folders
 
-    def remove_target_folder(self, folder: str) -> Tuple[str, List[str]]:
+    def remove_target_folder(self, folder: str) -> tuple[str, list[str]]:
         """Remove a target folder."""
         folders = self._workflow_models.get("target_folders", [])
         if folder in folders:
@@ -153,7 +165,7 @@ class WorkflowManagerAddon(BaseAddon):
             return f"Removed '{folder}'", folders
         return f"'{folder}' not found", folders
 
-    def scan_workflows(self) -> List[Tuple[str, bool]]:
+    def scan_workflows(self) -> list[tuple[str, bool]]:
         """Scan local workflows and check if in JSON."""
         if not self._workflows_path:
             return []
@@ -168,7 +180,7 @@ class WorkflowManagerAddon(BaseAddon):
 
         return sorted(result, key=lambda x: (not x[1], x[0]))
 
-    def get_models_table(self, workflow_id: str) -> List[List[Any]]:
+    def get_models_table(self, workflow_id: str) -> list[list[Any]]:
         """Get models table for a workflow.
 
         Returns: [Dateiname, Ordner, MB, S, M, L, URL]
@@ -210,7 +222,7 @@ class WorkflowManagerAddon(BaseAddon):
 
         return table
 
-    def parse_workflow_to_table(self, workflow_id: str) -> List[List[Any]]:
+    def parse_workflow_to_table(self, workflow_id: str) -> list[list[Any]]:
         """Parse workflow and return table with URL suggestions."""
         if not self._workflows_path:
             return []
@@ -237,7 +249,7 @@ class WorkflowManagerAddon(BaseAddon):
     def save_workflow(
         self,
         workflow_id: str,
-        table_data: List[List[Any]],
+        table_data: list[list[Any]],
     ) -> str:
         """Save workflow from table data."""
         if not workflow_id:
@@ -333,8 +345,10 @@ class WorkflowManagerAddon(BaseAddon):
             # === Workflow Selection ===
             with gr.Row():
                 workflow_list = self.scan_workflows()
-                wf_choices = [(f"{'✅' if in_json else '⚠️'} {wf_id}", wf_id)
-                              for wf_id, in_json in workflow_list]
+                wf_choices = [
+                    (f"{'✅' if in_json else '⚠️'} {wf_id}", wf_id)
+                    for wf_id, in_json in workflow_list
+                ]
 
                 workflow_dropdown = gr.Dropdown(
                     label="Workflow",
@@ -409,8 +423,10 @@ class WorkflowManagerAddon(BaseAddon):
 
             def on_scan():
                 workflow_list = self.scan_workflows()
-                choices = [(f"{'✅' if in_json else '⚠️'} {wf_id}", wf_id)
-                           for wf_id, in_json in workflow_list]
+                choices = [
+                    (f"{'✅' if in_json else '⚠️'} {wf_id}", wf_id)
+                    for wf_id, in_json in workflow_list
+                ]
                 return gr.update(choices=choices)
 
             def on_workflow_select(wf_id):
@@ -434,7 +450,7 @@ class WorkflowManagerAddon(BaseAddon):
                 return self.get_models_table(wf_id)
 
             def on_add_row(table_data):
-                if hasattr(table_data, 'values'):
+                if hasattr(table_data, "values"):
                     table_data = table_data.values.tolist()
                 if table_data is None:
                     table_data = []
@@ -444,14 +460,14 @@ class WorkflowManagerAddon(BaseAddon):
                 return table_data
 
             def on_del_row(table_data):
-                if hasattr(table_data, 'values'):
+                if hasattr(table_data, "values"):
                     table_data = table_data.values.tolist()
                 if table_data and len(table_data) > 0:
                     table_data.pop()
                 return table_data
 
             def on_save(wf_id, table_data):
-                if hasattr(table_data, 'values'):
+                if hasattr(table_data, "values"):
                     table_data = table_data.values.tolist()
                 return self.save_workflow(wf_id, table_data)
 

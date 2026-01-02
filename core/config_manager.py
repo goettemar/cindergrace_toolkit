@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class ConfigManager:
@@ -32,8 +32,8 @@ class ConfigManager:
     }
 
     def __init__(self):
-        self._settings: Dict[str, Any] = {}
-        self._config: Dict[str, Any] = {}  # Main config.json
+        self._settings: dict[str, Any] = {}
+        self._config: dict[str, Any] = {}  # Main config.json
         self._load_settings()
         self._load_config()
 
@@ -41,7 +41,7 @@ class ConfigManager:
         """Load settings from file or create defaults."""
         if self.SETTINGS_FILE.exists():
             try:
-                with open(self.SETTINGS_FILE, "r", encoding="utf-8") as f:
+                with open(self.SETTINGS_FILE, encoding="utf-8") as f:
                     self._settings = json.load(f)
             except Exception:
                 self._settings = self.DEFAULT_SETTINGS.copy()
@@ -63,13 +63,13 @@ class ConfigManager:
 
         if user_file.exists():
             try:
-                with open(user_file, "r", encoding="utf-8") as f:
+                with open(user_file, encoding="utf-8") as f:
                     self._config = json.load(f)
             except Exception:
                 self._config = {}
         elif default_file.exists():
             try:
-                with open(default_file, "r", encoding="utf-8") as f:
+                with open(default_file, encoding="utf-8") as f:
                     self._config = json.load(f)
             except Exception:
                 self._config = {}
@@ -83,7 +83,7 @@ class ConfigManager:
         self._settings[key] = value
         self._save_settings()
 
-    def get_all(self) -> Dict[str, Any]:
+    def get_all(self) -> dict[str, Any]:
         """Get all settings."""
         return self._settings.copy()
 
@@ -94,14 +94,14 @@ class ConfigManager:
 
     # === ComfyUI Path Detection ===
 
-    def detect_comfyui_path(self) -> Optional[str]:
+    def detect_comfyui_path(self) -> str | None:
         """Auto-detect ComfyUI installation path."""
         common_paths = [
             # Local common paths
             Path.home() / "ComfyUI",
             Path("/workspace/ComfyUI"),  # RunPod
-            Path("/content/ComfyUI"),    # Colab
-            Path("C:/ComfyUI"),          # Windows
+            Path("/content/ComfyUI"),  # Colab
+            Path("C:/ComfyUI"),  # Windows
             Path("D:/ComfyUI"),
             # Relative
             Path("../ComfyUI"),
@@ -114,7 +114,7 @@ class ConfigManager:
 
         return None
 
-    def get_comfyui_path(self) -> Optional[str]:
+    def get_comfyui_path(self) -> str | None:
         """Get ComfyUI path from config.json (same as addons)."""
         paths_config = self._config.get("paths", {})
         env = self.get_environment()
@@ -131,7 +131,7 @@ class ConfigManager:
         detected = self.detect_comfyui_path()
         return detected
 
-    def get_models_path(self) -> Optional[str]:
+    def get_models_path(self) -> str | None:
         """Get ComfyUI models directory path."""
         comfy_path = self.get_comfyui_path()
         if comfy_path:

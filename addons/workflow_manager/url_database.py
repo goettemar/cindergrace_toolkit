@@ -1,18 +1,18 @@
 """Known model URLs database for auto-suggestions."""
 
-from typing import Dict, Optional, List
 from dataclasses import dataclass
 
 
 @dataclass
 class KnownModel:
     """A known model with URL and metadata."""
+
     name: str
     filename: str
     url: str
     size_mb: int
     target_path: str
-    aliases: List[str] = None  # Alternative filenames
+    aliases: list[str] = None  # Alternative filenames
 
     def __post_init__(self):
         if self.aliases is None:
@@ -20,7 +20,7 @@ class KnownModel:
 
 
 # Database of known models with HuggingFace URLs
-KNOWN_MODELS: Dict[str, KnownModel] = {
+KNOWN_MODELS: dict[str, KnownModel] = {
     # === WAN 2.2 Models ===
     "wan2.2_i2v_720p_14B_bf16.safetensors": KnownModel(
         name="WAN 2.2 14B I2V (bf16)",
@@ -78,7 +78,6 @@ KNOWN_MODELS: Dict[str, KnownModel] = {
         size_mb=3500,
         target_path="clip_vision",
     ),
-
     # === WAN LoRAs ===
     "svi.safetensors": KnownModel(
         name="SVI LoRA",
@@ -94,7 +93,6 @@ KNOWN_MODELS: Dict[str, KnownModel] = {
         size_mb=400,
         target_path="loras/wan",
     ),
-
     # === FLUX Models ===
     "flux1-dev.safetensors": KnownModel(
         name="FLUX.1 Dev",
@@ -138,7 +136,6 @@ KNOWN_MODELS: Dict[str, KnownModel] = {
         size_mb=250,
         target_path="text_encoders",
     ),
-
     # === SDXL Models ===
     "sd_xl_base_1.0.safetensors": KnownModel(
         name="SDXL Base 1.0",
@@ -154,7 +151,6 @@ KNOWN_MODELS: Dict[str, KnownModel] = {
         size_mb=350,
         target_path="vae",
     ),
-
     # === LTX Video ===
     "ltx-video-2b-v0.9.safetensors": KnownModel(
         name="LTX Video 2B",
@@ -163,7 +159,6 @@ KNOWN_MODELS: Dict[str, KnownModel] = {
         size_mb=9000,
         target_path="checkpoints",
     ),
-
     # === Florence2 ===
     "Florence-2-large": KnownModel(
         name="Florence 2 Large",
@@ -175,7 +170,7 @@ KNOWN_MODELS: Dict[str, KnownModel] = {
 }
 
 
-def suggest_url(filename: str) -> Optional[KnownModel]:
+def suggest_url(filename: str) -> KnownModel | None:
     """Look up a filename and return known model info if available."""
     # Direct match
     if filename in KNOWN_MODELS:
@@ -195,6 +190,6 @@ def suggest_url(filename: str) -> Optional[KnownModel]:
     return None
 
 
-def get_all_known_models() -> List[KnownModel]:
+def get_all_known_models() -> list[KnownModel]:
     """Get all known models."""
     return list(KNOWN_MODELS.values())

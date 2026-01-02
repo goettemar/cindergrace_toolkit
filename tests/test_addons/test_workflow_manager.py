@@ -1,8 +1,7 @@
 """Tests for addons/workflow_manager - Workflow management addon."""
 
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,29 +13,31 @@ class TestWorkflowManagerAllowlist:
     def workflow_manager_instance(self, temp_config_dir, monkeypatch):
         """Create a WorkflowManagerAddon instance for testing."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            temp_config_dir["root"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            temp_config_dir["root"] / "data",
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            temp_config_dir["config"],
         )
 
         # Create data directory
         (temp_config_dir["root"] / "data").mkdir(parents=True, exist_ok=True)
 
         from addons.workflow_manager.addon import WorkflowManagerAddon
+
         addon = WorkflowManagerAddon()
         return addon
 
@@ -46,29 +47,30 @@ class TestWorkflowManagerAllowlist:
         assert hasattr(addon, "ALLOWED_FOLDERS")
         assert isinstance(addon.ALLOWED_FOLDERS, set)
 
-    def test_allowed_folders_matches_model_depot(self, workflow_manager_instance, temp_config_dir, monkeypatch):
+    def test_allowed_folders_matches_model_depot(
+        self, workflow_manager_instance, temp_config_dir, monkeypatch
+    ):
         """ALLOWED_FOLDERS should match Model Depot's allowlist."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR", temp_config_dir["root"]
         )
         monkeypatch.setattr(
             "addons.model_depot.addon.ModelDepotAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR", temp_config_dir["root"] / "data"
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR", temp_config_dir["config"]
         )
 
         from addons.model_depot.addon import ModelDepotAddon
+
         model_depot = ModelDepotAddon()
 
         wm = workflow_manager_instance
@@ -159,23 +161,24 @@ class TestWorkflowManagerModelSets:
     def wm_with_workflows(self, temp_config_dir, sample_workflow_models, monkeypatch):
         """Create WorkflowManager with sample workflows."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            temp_config_dir["root"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            temp_config_dir["root"] / "data",
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            temp_config_dir["config"],
         )
 
         data_dir = temp_config_dir["root"] / "data"
@@ -184,6 +187,7 @@ class TestWorkflowManagerModelSets:
             json.dump(sample_workflow_models, f)
 
         from addons.workflow_manager.addon import WorkflowManagerAddon
+
         addon = WorkflowManagerAddon()
         addon._workflow_models = sample_workflow_models
         return addon
@@ -224,29 +228,31 @@ class TestWorkflowManagerModelIdCollision:
     def wm_instance(self, temp_config_dir, monkeypatch):
         """Create WorkflowManager instance."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            temp_config_dir["root"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            temp_config_dir["root"] / "data",
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            temp_config_dir["config"],
         )
 
         data_dir = temp_config_dir["root"] / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
 
         from addons.workflow_manager.addon import WorkflowManagerAddon
+
         addon = WorkflowManagerAddon()
         addon._workflow_models = {
             "version": "1.0",
@@ -296,28 +302,30 @@ class TestVRAMTiers:
     def test_vram_tiers_defined(self, temp_config_dir, monkeypatch):
         """VRAM_TIERS should be properly defined."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            temp_config_dir["root"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            temp_config_dir["root"] / "data",
         )
         monkeypatch.setattr(
             "addons.workflow_manager.addon.WorkflowManagerAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            temp_config_dir["config"],
         )
 
         (temp_config_dir["root"] / "data").mkdir(parents=True, exist_ok=True)
 
         from addons.workflow_manager.addon import WorkflowManagerAddon
+
         addon = WorkflowManagerAddon()
 
         assert "S" in addon.VRAM_TIERS  # Small: 8-12GB

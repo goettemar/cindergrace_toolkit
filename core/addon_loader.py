@@ -2,9 +2,8 @@
 
 import importlib
 import json
-import os
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from core.base_addon import BaseAddon
 
@@ -22,10 +21,10 @@ class AddonLoader:
     RELEASES_DIR = Path(__file__).parent.parent / "config" / "releases"
 
     def __init__(self):
-        self._loaded_addons: Dict[str, BaseAddon] = {}
-        self._release_config: Optional[Dict[str, Any]] = None
+        self._loaded_addons: dict[str, BaseAddon] = {}
+        self._release_config: dict[str, Any] | None = None
 
-    def get_available_releases(self) -> List[str]:
+    def get_available_releases(self) -> list[str]:
         """Get list of available release configurations."""
         releases = []
         if self.RELEASES_DIR.exists():
@@ -33,7 +32,7 @@ class AddonLoader:
                 releases.append(f.stem)
         return sorted(releases)
 
-    def get_available_addons(self) -> List[str]:
+    def get_available_addons(self) -> list[str]:
         """Scan addons directory for available addons."""
         addons = []
         if self.ADDONS_DIR.exists():
@@ -44,7 +43,7 @@ class AddonLoader:
                         addons.append(d.name)
         return sorted(addons)
 
-    def load_release_config(self, release_name: str) -> Dict[str, Any]:
+    def load_release_config(self, release_name: str) -> dict[str, Any]:
         """Load release configuration from file or URL."""
         # Check if it's a URL (remote config)
         if release_name.startswith("http"):
@@ -55,14 +54,15 @@ class AddonLoader:
         if not config_path.exists():
             raise FileNotFoundError(f"Release config not found: {config_path}")
 
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             self._release_config = json.load(f)
 
         return self._release_config
 
-    def _load_remote_config(self, url: str) -> Dict[str, Any]:
+    def _load_remote_config(self, url: str) -> dict[str, Any]:
         """Load release configuration from remote URL."""
         import urllib.request
+
         from core.ssl_utils import get_ssl_context
 
         # SSL context (secure by default, configurable via config.json)
@@ -76,7 +76,7 @@ class AddonLoader:
         except Exception as e:
             raise RuntimeError(f"Failed to load remote config from {url}: {e}")
 
-    def load_addon(self, addon_id: str) -> Optional[BaseAddon]:
+    def load_addon(self, addon_id: str) -> BaseAddon | None:
         """Load a single addon by ID."""
         if addon_id in self._loaded_addons:
             return self._loaded_addons[addon_id]
@@ -88,9 +88,7 @@ class AddonLoader:
 
         try:
             # Dynamic import
-            spec = importlib.util.spec_from_file_location(
-                f"addons.{addon_id}.addon", addon_path
-            )
+            spec = importlib.util.spec_from_file_location(f"addons.{addon_id}.addon", addon_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
@@ -98,9 +96,7 @@ class AddonLoader:
             addon_class = None
             for name in dir(module):
                 obj = getattr(module, name)
-                if (isinstance(obj, type) and
-                    issubclass(obj, BaseAddon) and
-                    obj is not BaseAddon):
+                if isinstance(obj, type) and issubclass(obj, BaseAddon) and obj is not BaseAddon:
                     addon_class = obj
                     break
 
@@ -119,7 +115,7 @@ class AddonLoader:
             print(f"Error loading addon {addon_id}: {e}")
             return None
 
-    def load_release(self, release_name: str) -> List[BaseAddon]:
+    def load_release(self, release_name: str) -> list[BaseAddon]:
         """Load all addons for a release configuration."""
         config = self.load_release_config(release_name)
         addons = []
@@ -145,6 +141,6 @@ class AddonLoader:
         del self._loaded_addons[addon_id]
         return True
 
-    def get_loaded_addons(self) -> List[BaseAddon]:
+    def get_loaded_addons(self) -> list[BaseAddon]:
         """Get list of currently loaded addons."""
         return list(self._loaded_addons.values())

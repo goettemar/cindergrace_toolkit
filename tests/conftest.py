@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,6 +16,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # === Temporary Directory Fixtures ===
+
 
 @pytest.fixture
 def temp_dir():
@@ -42,8 +43,9 @@ def temp_config_dir(temp_dir):
 
 # === Config Fixtures ===
 
+
 @pytest.fixture
-def sample_config() -> Dict[str, Any]:
+def sample_config() -> dict[str, Any]:
     """Sample config.json content."""
     return {
         "paths": {
@@ -71,7 +73,7 @@ def sample_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_workflow_models() -> Dict[str, Any]:
+def sample_workflow_models() -> dict[str, Any]:
     """Sample workflow_models.json content."""
     return {
         "version": "1.1.0",
@@ -139,8 +141,9 @@ def config_file(temp_config_dir, sample_config):
 
 # === Workflow Fixtures ===
 
+
 @pytest.fixture
-def sample_workflow_api_format() -> Dict[str, Any]:
+def sample_workflow_api_format() -> dict[str, Any]:
     """Sample workflow in API format."""
     return {
         "nodes": [
@@ -148,25 +151,19 @@ def sample_workflow_api_format() -> Dict[str, Any]:
                 "id": 1,
                 "type": "UNETLoader",
                 "class_type": "UNETLoader",
-                "inputs": {
-                    "unet_name": "wan2.2_i2v_720p_14B_fp8_e4m3fn.safetensors"
-                },
+                "inputs": {"unet_name": "wan2.2_i2v_720p_14B_fp8_e4m3fn.safetensors"},
             },
             {
                 "id": 2,
                 "type": "VAELoader",
                 "class_type": "VAELoader",
-                "inputs": {
-                    "vae_name": "wan_2.2_vae.safetensors"
-                },
+                "inputs": {"vae_name": "wan_2.2_vae.safetensors"},
             },
             {
                 "id": 3,
                 "type": "CLIPLoader",
                 "class_type": "CLIPLoader",
-                "inputs": {
-                    "clip_name": "t5xxl_fp8_e4m3fn.safetensors"
-                },
+                "inputs": {"clip_name": "t5xxl_fp8_e4m3fn.safetensors"},
             },
         ],
         "links": [],
@@ -174,26 +171,20 @@ def sample_workflow_api_format() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_workflow_dict_format() -> Dict[str, Any]:
+def sample_workflow_dict_format() -> dict[str, Any]:
     """Sample workflow in node dict format."""
     return {
         "1": {
             "class_type": "UNETLoader",
-            "inputs": {
-                "unet_name": "flux1-dev-fp8.safetensors"
-            },
+            "inputs": {"unet_name": "flux1-dev-fp8.safetensors"},
         },
         "2": {
             "class_type": "VAELoader",
-            "inputs": {
-                "vae_name": "ae.safetensors"
-            },
+            "inputs": {"vae_name": "ae.safetensors"},
         },
         "3": {
             "class_type": "LoraLoader",
-            "inputs": {
-                "lora_name": "my_lora.safetensors"
-            },
+            "inputs": {"lora_name": "my_lora.safetensors"},
         },
     }
 
@@ -208,6 +199,7 @@ def workflow_file(temp_dir, sample_workflow_api_format):
 
 
 # === Mock Fixtures ===
+
 
 @pytest.fixture
 def mock_gradio():
@@ -229,9 +221,18 @@ def mock_comfyui_path(temp_dir):
     models_dir = comfy_dir / "models"
     models_dir.mkdir()
 
-    for folder in ["checkpoints", "diffusion_models", "diffusion_models/wan",
-                   "loras", "text_encoders", "vae", "clip_vision", "controlnet",
-                   "upscale_models", "LLM"]:
+    for folder in [
+        "checkpoints",
+        "diffusion_models",
+        "diffusion_models/wan",
+        "loras",
+        "text_encoders",
+        "vae",
+        "clip_vision",
+        "controlnet",
+        "upscale_models",
+        "LLM",
+    ]:
         (models_dir / folder).mkdir(parents=True, exist_ok=True)
 
     # Create workflows directory
@@ -266,16 +267,23 @@ def mock_model_files(mock_comfyui_path):
 
 # === Environment Fixtures ===
 
+
 @pytest.fixture
 def local_environment():
     """Simulate local environment."""
     with patch.dict(os.environ, {}, clear=False):
         # Ensure RunPod/Colab markers don't exist
         with patch("os.path.exists") as mock_exists:
+
             def exists_side_effect(path):
                 if path in ["/workspace", "/runpod-volume", "/content"]:
                     return False
-                return os.path.exists.__wrapped__(path) if hasattr(os.path.exists, "__wrapped__") else True
+                return (
+                    os.path.exists.__wrapped__(path)
+                    if hasattr(os.path.exists, "__wrapped__")
+                    else True
+                )
+
             mock_exists.side_effect = exists_side_effect
             yield
 
@@ -284,12 +292,14 @@ def local_environment():
 def runpod_environment():
     """Simulate RunPod environment."""
     with patch("os.path.exists") as mock_exists:
+
         def exists_side_effect(path):
             if path in ["/workspace", "/runpod-volume"]:
                 return True
             if path == "/content":
                 return False
             return True
+
         mock_exists.side_effect = exists_side_effect
         yield
 
@@ -297,22 +307,24 @@ def runpod_environment():
 @pytest.fixture
 def colab_environment():
     """Simulate Google Colab environment."""
-    with patch.dict(os.environ, {"COLAB_GPU": "1"}):
-        with patch("os.path.exists") as mock_exists:
-            def exists_side_effect(path):
-                if path == "/content":
-                    return True
-                if path in ["/workspace", "/runpod-volume"]:
-                    return False
+    with patch.dict(os.environ, {"COLAB_GPU": "1"}), patch("os.path.exists") as mock_exists:
+
+        def exists_side_effect(path):
+            if path == "/content":
                 return True
-            mock_exists.side_effect = exists_side_effect
-            yield
+            if path in ["/workspace", "/runpod-volume"]:
+                return False
+            return True
+
+        mock_exists.side_effect = exists_side_effect
+        yield
 
 
 # === Release Config Fixtures ===
 
+
 @pytest.fixture
-def sample_release_config() -> Dict[str, Any]:
+def sample_release_config() -> dict[str, Any]:
     """Sample release configuration."""
     return {
         "name": "Test Release",

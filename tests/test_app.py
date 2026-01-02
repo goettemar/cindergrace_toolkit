@@ -1,10 +1,7 @@
 """Tests for app.py - Main application."""
 
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 
 class TestDisclaimerSettings:
@@ -55,10 +52,13 @@ class TestDisclaimerSettings:
         """Should return acceptance date."""
         settings_file = temp_dir / "app_settings.json"
         with open(settings_file, "w") as f:
-            json.dump({
-                "disclaimer_accepted": True,
-                "disclaimer_accepted_date": "2024-01-15 10:30",
-            }, f)
+            json.dump(
+                {
+                    "disclaimer_accepted": True,
+                    "disclaimer_accepted_date": "2024-01-15 10:30",
+                },
+                f,
+            )
 
         monkeypatch.setattr("app.SETTINGS_DIR", temp_dir)
         monkeypatch.setattr("app.SETTINGS_FILE", settings_file)
@@ -266,7 +266,7 @@ class TestAppSettings:
         monkeypatch.setattr("app.SETTINGS_DIR", settings_dir)
         monkeypatch.setattr("app.SETTINGS_FILE", settings_file)
 
-        from app import _save_app_settings, _load_app_settings
+        from app import _load_app_settings, _save_app_settings
 
         original = {
             "key1": "value1",
@@ -328,7 +328,12 @@ class TestCreateApp:
             # First call raises, second succeeds (fallback)
             mock_loader.load_release_config.side_effect = [
                 FileNotFoundError("Not found"),
-                {"name": "Minimal", "version": "1.0.0", "addons": [], "remote_profiles": {"enabled": False}},
+                {
+                    "name": "Minimal",
+                    "version": "1.0.0",
+                    "addons": [],
+                    "remote_profiles": {"enabled": False},
+                },
             ]
             mock_loader.load_release.return_value = []
             MockLoader.return_value = mock_loader

@@ -1,9 +1,6 @@
 """Tests for addons/workflow_manager/workflow_parser.py - Workflow parsing."""
 
 import json
-from pathlib import Path
-
-import pytest
 
 
 class TestParseWorkflow:
@@ -73,8 +70,16 @@ class TestParseWorkflow:
                 {"id": 1, "class_type": "UNETLoader", "inputs": {"unet_name": "unet.safetensors"}},
                 {"id": 2, "class_type": "VAELoader", "inputs": {"vae_name": "vae.safetensors"}},
                 {"id": 3, "class_type": "LoraLoader", "inputs": {"lora_name": "lora.safetensors"}},
-                {"id": 4, "class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "ckpt.safetensors"}},
-                {"id": 5, "class_type": "CLIPVisionLoader", "inputs": {"clip_name": "clip.safetensors"}},
+                {
+                    "id": 4,
+                    "class_type": "CheckpointLoaderSimple",
+                    "inputs": {"ckpt_name": "ckpt.safetensors"},
+                },
+                {
+                    "id": 5,
+                    "class_type": "CLIPVisionLoader",
+                    "inputs": {"clip_name": "clip.safetensors"},
+                },
             ]
         }
         wf_path = temp_dir / "paths.json"
@@ -96,7 +101,11 @@ class TestParseWorkflow:
         """WAN models should map to diffusion_models/wan."""
         workflow = {
             "nodes": [
-                {"id": 1, "class_type": "WanI2VLoader", "inputs": {"model": "wan_model.safetensors"}},
+                {
+                    "id": 1,
+                    "class_type": "WanI2VLoader",
+                    "inputs": {"model": "wan_model.safetensors"},
+                },
             ]
         }
         wf_path = temp_dir / "wan.json"

@@ -1,11 +1,7 @@
 """Tests for core/profile_sync.py - Remote profile synchronization."""
 
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-from urllib.error import URLError
-
-import pytest
+from unittest.mock import patch
 
 
 class TestProfileSyncService:
@@ -16,6 +12,7 @@ class TestProfileSyncService:
         monkeypatch.setattr("core.profile_sync.ProfileSyncService.CACHE_DIR", temp_dir / ".cache")
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService("https://example.com/profiles/")
 
         assert service.base_url == "https://example.com/profiles"  # Trailing slash removed
@@ -25,6 +22,7 @@ class TestProfileSyncService:
         monkeypatch.setattr("core.profile_sync.ProfileSyncService.CACHE_DIR", temp_dir / ".cache")
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService()
 
         service.set_base_url("https://new-url.com/profiles/")
@@ -35,6 +33,7 @@ class TestProfileSyncService:
         monkeypatch.setattr("core.profile_sync.ProfileSyncService.CACHE_DIR", temp_dir / ".cache")
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService()  # No URL
 
         result = service.fetch_index()
@@ -103,6 +102,7 @@ class TestProfileSyncService:
         monkeypatch.setattr("core.profile_sync.ProfileSyncService.CACHE_DIR", temp_dir / ".cache")
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService("https://example.com")
 
         # Pre-populate cache
@@ -118,6 +118,7 @@ class TestProfileSyncService:
         monkeypatch.setattr("core.profile_sync.ProfileSyncService.CACHE_DIR", cache_dir)
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService("https://example.com")
 
         profile_data = {"models": ["model1", "model2"], "version": "1.0"}
@@ -144,6 +145,7 @@ class TestProfileSyncService:
             json.dump(profile_data, f)
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService("https://example.com")
 
         result = service.load_from_cache("test_profile")
@@ -156,6 +158,7 @@ class TestProfileSyncService:
         monkeypatch.setattr("core.profile_sync.ProfileSyncService.CACHE_DIR", cache_dir)
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService("https://example.com")
 
         result = service.load_from_cache("nonexistent")
@@ -173,6 +176,7 @@ class TestProfileSyncService:
                 json.dump({}, f)
 
         from core.profile_sync import ProfileSyncService
+
         service = ProfileSyncService("https://example.com")
         service._cached_profiles = {"profile1": {}, "profile2": {}}
 

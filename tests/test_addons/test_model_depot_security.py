@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,6 +14,7 @@ class TestSanitizePath:
         """Should allow valid paths within base directory."""
         # Import the module-level function
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
         from addons.model_depot.addon import _sanitize_path
@@ -145,29 +146,28 @@ class TestIsAllowedFolder:
         """Create a ModelDepotAddon instance for testing."""
         # Mock gradio
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR", temp_config_dir["root"]
         )
         monkeypatch.setattr(
             "addons.model_depot.addon.ModelDepotAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR", temp_config_dir["root"] / "data"
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR", temp_config_dir["config"]
         )
 
         # Create required directories
         (temp_config_dir["root"] / "data").mkdir(parents=True, exist_ok=True)
 
         from addons.model_depot.addon import ModelDepotAddon
+
         addon = ModelDepotAddon()
         return addon
 
@@ -238,26 +238,26 @@ class TestDownloadModelSecurity:
     """Tests for download_model security checks."""
 
     @pytest.fixture
-    def model_depot_with_models(self, temp_config_dir, sample_workflow_models, mock_comfyui_path, monkeypatch):
+    def model_depot_with_models(
+        self, temp_config_dir, sample_workflow_models, mock_comfyui_path, monkeypatch
+    ):
         """Create ModelDepotAddon with workflow models."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR", temp_config_dir["root"]
         )
         monkeypatch.setattr(
             "addons.model_depot.addon.ModelDepotAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR", temp_config_dir["root"] / "data"
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR", temp_config_dir["config"]
         )
 
         # Create data directory with workflow_models.json
@@ -267,6 +267,7 @@ class TestDownloadModelSecurity:
             json.dump(sample_workflow_models, f)
 
         from addons.model_depot.addon import ModelDepotAddon
+
         addon = ModelDepotAddon()
         addon._models_path = mock_comfyui_path / "models"
         addon._workflow_models = sample_workflow_models
@@ -311,26 +312,26 @@ class TestRestoreFromBackupSecurity:
     """Tests for restore_from_backup security checks."""
 
     @pytest.fixture
-    def model_depot_with_backup(self, temp_config_dir, sample_workflow_models, mock_comfyui_path, monkeypatch):
+    def model_depot_with_backup(
+        self, temp_config_dir, sample_workflow_models, mock_comfyui_path, monkeypatch
+    ):
         """Create ModelDepotAddon with backup configured."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR", temp_config_dir["root"]
         )
         monkeypatch.setattr(
             "addons.model_depot.addon.ModelDepotAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR", temp_config_dir["root"] / "data"
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR", temp_config_dir["config"]
         )
 
         data_dir = temp_config_dir["root"] / "data"
@@ -342,6 +343,7 @@ class TestRestoreFromBackupSecurity:
         backup_dir.mkdir()
 
         from addons.model_depot.addon import ModelDepotAddon
+
         addon = ModelDepotAddon()
         addon._models_path = mock_comfyui_path / "models"
         addon._backup_path = backup_dir
@@ -368,23 +370,21 @@ class TestFindOtherModelsSecurity:
     def model_depot_with_folders(self, temp_config_dir, mock_comfyui_path, monkeypatch):
         """Create ModelDepotAddon with folder scanning."""
         import sys
+
         sys.modules["gradio"] = MagicMock()
 
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR",
-            temp_config_dir["root"]
+            "addons.model_depot.addon.ModelDepotAddon.PROJECT_DIR", temp_config_dir["root"]
         )
         monkeypatch.setattr(
             "addons.model_depot.addon.ModelDepotAddon.USER_CONFIG_DIR",
-            temp_config_dir["user_config"]
+            temp_config_dir["user_config"],
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR",
-            temp_config_dir["root"] / "data"
+            "addons.model_depot.addon.ModelDepotAddon.DATA_DIR", temp_config_dir["root"] / "data"
         )
         monkeypatch.setattr(
-            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR",
-            temp_config_dir["config"]
+            "addons.model_depot.addon.ModelDepotAddon.CONFIG_DIR", temp_config_dir["config"]
         )
 
         data_dir = temp_config_dir["root"] / "data"
@@ -400,6 +400,7 @@ class TestFindOtherModelsSecurity:
             json.dump(workflow_models, f)
 
         from addons.model_depot.addon import ModelDepotAddon
+
         addon = ModelDepotAddon()
         addon._models_path = mock_comfyui_path / "models"
         addon._workflow_models = workflow_models

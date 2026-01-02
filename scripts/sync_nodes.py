@@ -18,8 +18,6 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
 
 # Find project root (where data/ is located)
 SCRIPT_DIR = Path(__file__).parent
@@ -54,30 +52,30 @@ def clear_error_log() -> None:
         pass
 
 
-def load_custom_nodes_config() -> Dict:
+def load_custom_nodes_config() -> dict:
     """Load custom_nodes.json from data directory."""
     config_file = DATA_DIR / "custom_nodes.json"
     if not config_file.exists():
         print(f"[ERROR] Config not found: {config_file}")
         sys.exit(1)
 
-    with open(config_file, "r", encoding="utf-8") as f:
+    with open(config_file, encoding="utf-8") as f:
         return json.load(f)
 
 
-def detect_comfyui_path() -> Optional[Path]:
+def detect_comfyui_path() -> Path | None:
     """Auto-detect ComfyUI path based on environment."""
     candidates = [
         Path("/workspace/ComfyUI"),  # RunPod
-        Path("/content/ComfyUI"),    # Colab
-        Path.home() / "ComfyUI",     # Local
+        Path("/content/ComfyUI"),  # Colab
+        Path.home() / "ComfyUI",  # Local
         Path.home() / "projekte" / "ComfyUI",  # Local alt
     ]
 
     for config_path in [PROJECT_DIR / ".config" / "config.json", CONFIG_DIR / "config.json"]:
         if config_path.exists():
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     config = json.load(f)
 
                 paths = config.get("paths", {}).get("comfyui", {})
@@ -105,20 +103,11 @@ def detect_comfyui_path() -> Optional[Path]:
 
 
 def run_command(
-    cmd: List[str],
-    cwd: Optional[Path] = None,
-    quiet: bool = False,
-    timeout: int = 300
-) -> Tuple[int, str]:
+    cmd: list[str], cwd: Path | None = None, quiet: bool = False, timeout: int = 300
+) -> tuple[int, str]:
     """Run a shell command and return (returncode, output)."""
     try:
-        result = subprocess.run(
-            cmd,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
+        result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
         output = result.stdout + result.stderr
         if not quiet and result.returncode != 0:
             print(f"      Command failed: {' '.join(cmd[:3])}...")
@@ -129,7 +118,9 @@ def run_command(
         return -1, str(e)
 
 
-def ensure_manager_installed(custom_nodes_dir: Path, manager_config: Dict, quiet: bool = False) -> bool:
+def ensure_manager_installed(
+    custom_nodes_dir: Path, manager_config: dict, quiet: bool = False
+) -> bool:
     """Ensure ComfyUI-Manager is installed (required for cm-cli)."""
     manager_path = custom_nodes_dir / "ComfyUI-Manager"
 
@@ -145,8 +136,7 @@ def ensure_manager_installed(custom_nodes_dir: Path, manager_config: Dict, quiet
         print(f"      Cloning from {url}...")
 
     code, output = run_command(
-        ["git", "clone", "--quiet", "--depth", "1", url, str(manager_path)],
-        timeout=180
+        ["git", "clone", "--quiet", "--depth", "1", url, str(manager_path)], timeout=180
     )
 
     if code != 0:
@@ -162,7 +152,7 @@ def ensure_manager_installed(custom_nodes_dir: Path, manager_config: Dict, quiet
         run_command(
             [sys.executable, "-m", "pip", "install", "-q", "-r", str(req_file)],
             cwd=manager_path,
-            quiet=True
+            quiet=True,
         )
 
     if not quiet:
@@ -171,11 +161,8 @@ def ensure_manager_installed(custom_nodes_dir: Path, manager_config: Dict, quiet
 
 
 def run_cm_cli(
-    comfyui_path: Path,
-    action: str,
-    nodes: List[str],
-    quiet: bool = False
-) -> Tuple[bool, str]:
+    comfyui_path: Path, action: str, nodes: list[str], quiet: bool = False
+) -> tuple[bool, str]:
     """Run cm-cli.py with given action and nodes."""
     cm_cli = comfyui_path / "custom_nodes" / "ComfyUI-Manager" / "cm-cli.py"
 
@@ -185,7 +172,9 @@ def run_cm_cli(
     cmd = [sys.executable, str(cm_cli), action] + nodes
 
     if not quiet:
-        print(f"      Running: cm-cli.py {action} {' '.join(nodes[:3])}{'...' if len(nodes) > 3 else ''}")
+        print(
+            f"      Running: cm-cli.py {action} {' '.join(nodes[:3])}{'...' if len(nodes) > 3 else ''}"
+        )
 
     code, output = run_command(cmd, cwd=comfyui_path, timeout=600)
 
@@ -193,11 +182,8 @@ def run_cm_cli(
 
 
 def sync_nodes(
-    comfyui_path: Path,
-    remove_disabled: bool = False,
-    dry_run: bool = False,
-    quiet: bool = False
-) -> Dict[str, int]:
+    comfyui_path: Path, remove_disabled: bool = False, dry_run: bool = False, quiet: bool = False
+) -> dict[str, int]:
     """
     Sync custom nodes using cm-cli.
 
@@ -243,7 +229,7 @@ def sync_nodes(
             if success:
                 # Parse output to count what happened
                 for name in enabled_nodes:
-                    if f"installed" in output.lower() or f"already" in output.lower():
+                    if "installed" in output.lower() or "already" in output.lower():
                         stats["installed"] += 1
                     else:
                         stats["skipped"] += 1
@@ -252,7 +238,7 @@ def sync_nodes(
             else:
                 log_error("cm-cli install", "INSTALL", output[:200])
                 if not quiet:
-                    print(f"      [WARNING] Some nodes may have failed")
+                    print("      [WARNING] Some nodes may have failed")
                     print(f"      {output[:300]}")
                 stats["errors"] += len(enabled_nodes)
 
@@ -275,7 +261,7 @@ def sync_nodes(
             else:
                 log_error("cm-cli uninstall", "UNINSTALL", output[:200])
                 if not quiet:
-                    print(f"      [WARNING] Some nodes may have failed to uninstall")
+                    print("      [WARNING] Some nodes may have failed to uninstall")
                 stats["errors"] += len(disabled_nodes)
 
     return stats
@@ -299,31 +285,15 @@ def update_all_nodes(comfyui_path: Path, quiet: bool = False) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description="Sync ComfyUI custom nodes using cm-cli")
+    parser.add_argument("--comfyui-path", type=str, help="Path to ComfyUI installation")
     parser.add_argument(
-        "--comfyui-path",
-        type=str,
-        help="Path to ComfyUI installation"
+        "--remove-disabled", action="store_true", help="Remove nodes that are disabled in config"
     )
+    parser.add_argument("--update-all", action="store_true", help="Update all installed nodes")
     parser.add_argument(
-        "--remove-disabled",
-        action="store_true",
-        help="Remove nodes that are disabled in config"
+        "--dry-run", action="store_true", help="Show what would be done without making changes"
     )
-    parser.add_argument(
-        "--update-all",
-        action="store_true",
-        help="Update all installed nodes"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be done without making changes"
-    )
-    parser.add_argument(
-        "--quiet", "-q",
-        action="store_true",
-        help="Minimal output"
-    )
+    parser.add_argument("--quiet", "-q", action="store_true", help="Minimal output")
 
     args = parser.parse_args()
 
@@ -349,16 +319,15 @@ def main():
         sys.exit(0 if success else 1)
 
     stats = sync_nodes(
-        comfyui_path,
-        remove_disabled=args.remove_disabled,
-        dry_run=args.dry_run,
-        quiet=args.quiet
+        comfyui_path, remove_disabled=args.remove_disabled, dry_run=args.dry_run, quiet=args.quiet
     )
 
     if not args.quiet:
         print()
-        print(f"Done: {stats['installed']} installed, {stats['updated']} updated, "
-              f"{stats['removed']} removed, {stats['skipped']} skipped, {stats['errors']} errors")
+        print(
+            f"Done: {stats['installed']} installed, {stats['updated']} updated, "
+            f"{stats['removed']} removed, {stats['skipped']} skipped, {stats['errors']} errors"
+        )
 
     sys.exit(0 if stats["errors"] == 0 else 1)
 

@@ -1,7 +1,7 @@
 """Base class for all toolkit addons."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+
 import gradio as gr
 
 

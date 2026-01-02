@@ -3,10 +3,8 @@
 import base64
 import hashlib
 import json
-import os
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
 
 import gradio as gr
 
@@ -26,12 +24,14 @@ def _encrypt(data: str, password: str) -> str:
     return base64.b64encode(encrypted).decode()
 
 
-def _decrypt(encrypted_data: str, password: str) -> Optional[str]:
+def _decrypt(encrypted_data: str, password: str) -> str | None:
     """Decrypt data with password."""
     try:
         key = _derive_key(password)
         encrypted_bytes = base64.b64decode(encrypted_data)
-        decrypted = bytes(a ^ b for a, b in zip(encrypted_bytes, key * (len(encrypted_bytes) // len(key) + 1)))
+        decrypted = bytes(
+            a ^ b for a, b in zip(encrypted_bytes, key * (len(encrypted_bytes) // len(key) + 1))
+        )
         return decrypted.decode()
     except Exception:
         return None
@@ -72,12 +72,12 @@ class GitSyncAddon(BaseAddon):
         except Exception as e:
             return f"❌ Fehler: {e}"
 
-    def _get_token(self, password: str) -> Optional[str]:
+    def _get_token(self, password: str) -> str | None:
         """Get decrypted token."""
         if not self.CREDENTIALS_FILE.exists():
             return None
         try:
-            with open(self.CREDENTIALS_FILE, "r") as f:
+            with open(self.CREDENTIALS_FILE) as f:
                 data = json.load(f)
             return _decrypt(data.get("token", ""), password)
         except Exception:
@@ -299,9 +299,12 @@ class GitSyncAddon(BaseAddon):
 
             def on_save_token(token, password):
                 if not token or not password:
-                    return "Token und Passwort erforderlich", f"**Token Status:** ❌ Kein Token"
+                    return "Token und Passwort erforderlich", "**Token Status:** ❌ Kein Token"
                 if len(password) < 4:
-                    return "Passwort muss mindestens 4 Zeichen haben", f"**Token Status:** ❌ Kein Token"
+                    return (
+                        "Passwort muss mindestens 4 Zeichen haben",
+                        "**Token Status:** ❌ Kein Token",
+                    )
                 result = self._save_token(token, password)
                 has_token = self._has_token()
                 status = "✅ Token vorhanden" if has_token else "❌ Kein Token"
@@ -309,7 +312,7 @@ class GitSyncAddon(BaseAddon):
 
             def on_delete_token():
                 result = self._delete_token()
-                return result, f"**Token Status:** ❌ Kein Token"
+                return result, "**Token Status:** ❌ Kein Token"
 
             def on_refresh_status():
                 return self._get_git_status()

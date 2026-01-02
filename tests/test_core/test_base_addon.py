@@ -1,7 +1,8 @@
 """Tests for core/base_addon.py - Base addon class."""
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 
 class TestBaseAddon:

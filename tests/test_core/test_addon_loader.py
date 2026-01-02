@@ -1,8 +1,6 @@
 """Tests for core/addon_loader.py - Addon loading system."""
 
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -21,9 +19,12 @@ class TestAddonLoader:
                 json.dump(sample_release_config, f)
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", releases_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         releases = loader.get_available_releases()
@@ -38,9 +39,12 @@ class TestAddonLoader:
         # Don't create the directory
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", releases_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         assert loader.get_available_releases() == []
@@ -54,9 +58,12 @@ class TestAddonLoader:
             json.dump(sample_release_config, f)
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", releases_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         config = loader.load_release_config("test")
@@ -70,9 +77,12 @@ class TestAddonLoader:
         releases_dir.mkdir(parents=True)
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", releases_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         with pytest.raises(FileNotFoundError):
@@ -98,9 +108,12 @@ class TestAddonLoader:
         (addons_dir / "_private" / "addon.py").touch()
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", addons_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         addons = loader.get_available_addons()
@@ -119,7 +132,7 @@ class TestAddonLoader:
         test_addon_dir = addons_dir / "test_addon"
         test_addon_dir.mkdir()
         with open(test_addon_dir / "addon.py", "w") as f:
-            f.write('''
+            f.write("""
 from core.base_addon import BaseAddon
 import gradio as gr
 
@@ -135,12 +148,15 @@ class TestAddonAddon(BaseAddon):
         with gr.Blocks() as ui:
             gr.Markdown("Test")
         return ui
-''')
+""")
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", addons_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         # Load twice
@@ -156,9 +172,12 @@ class TestAddonAddon(BaseAddon):
         addons_dir.mkdir()
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", addons_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         result = loader.load_addon("nonexistent")
@@ -172,7 +191,7 @@ class TestAddonAddon(BaseAddon):
         test_addon_dir = addons_dir / "unload_test"
         test_addon_dir.mkdir()
         with open(test_addon_dir / "addon.py", "w") as f:
-            f.write('''
+            f.write("""
 from core.base_addon import BaseAddon
 import gradio as gr
 
@@ -184,12 +203,15 @@ class UnloadTestAddon(BaseAddon):
         with gr.Blocks() as ui:
             gr.Markdown("Test")
         return ui
-''')
+""")
 
         monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", addons_dir)
-        monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         loader.load_addon("unload_test")
@@ -201,10 +223,15 @@ class UnloadTestAddon(BaseAddon):
 
     def test_unload_nonexistent_addon(self, temp_config_dir, monkeypatch):
         """Unloading non-loaded addon should return False."""
-        monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons")
-        monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons"
+        )
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         result = loader.unload_addon("nonexistent")
@@ -212,10 +239,15 @@ class UnloadTestAddon(BaseAddon):
 
     def test_get_loaded_addons(self, temp_config_dir, monkeypatch):
         """Should return list of loaded addons."""
-        monkeypatch.setattr("core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons")
-        monkeypatch.setattr("core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases")
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.ADDONS_DIR", temp_config_dir["root"] / "addons"
+        )
+        monkeypatch.setattr(
+            "core.addon_loader.AddonLoader.RELEASES_DIR", temp_config_dir["config"] / "releases"
+        )
 
         from core.addon_loader import AddonLoader
+
         loader = AddonLoader()
 
         # Initially empty

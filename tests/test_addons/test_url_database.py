@@ -1,7 +1,5 @@
 """Tests for addons/workflow_manager/url_database.py - Known model URLs."""
 
-import pytest
-
 
 class TestSuggestUrl:
     """Tests for suggest_url function."""
@@ -132,7 +130,7 @@ class TestGetAllKnownModels:
 
     def test_returns_list(self):
         """Should return a list of KnownModel objects."""
-        from addons.workflow_manager.url_database import get_all_known_models, KnownModel
+        from addons.workflow_manager.url_database import KnownModel, get_all_known_models
 
         models = get_all_known_models()
 
@@ -148,7 +146,7 @@ class TestGetAllKnownModels:
 
         for model in models:
             assert model.name, f"Model missing name: {model.filename}"
-            assert model.filename, f"Model missing filename"
+            assert model.filename, "Model missing filename"
             assert model.url, f"Model missing URL: {model.filename}"
             assert model.size_mb > 0, f"Model has invalid size: {model.filename}"
             assert model.target_path, f"Model missing target_path: {model.filename}"
@@ -161,24 +159,34 @@ class TestGetAllKnownModels:
 
         for model in models:
             assert model.url.startswith("https://"), f"URL not HTTPS: {model.url}"
-            assert "huggingface.co" in model.url or "github.com" in model.url, \
+            assert "huggingface.co" in model.url or "github.com" in model.url, (
                 f"URL from unexpected source: {model.url}"
+            )
 
     def test_target_paths_are_valid(self):
         """All target paths should be valid model folders."""
         from addons.workflow_manager.url_database import get_all_known_models
 
         valid_paths = {
-            "checkpoints", "diffusion_models", "diffusion_models/wan",
-            "loras", "loras/wan", "text_encoders", "vae", "clip_vision",
-            "controlnet", "upscale_models", "LLM",
+            "checkpoints",
+            "diffusion_models",
+            "diffusion_models/wan",
+            "loras",
+            "loras/wan",
+            "text_encoders",
+            "vae",
+            "clip_vision",
+            "controlnet",
+            "upscale_models",
+            "LLM",
         }
 
         models = get_all_known_models()
 
         for model in models:
-            assert model.target_path in valid_paths, \
+            assert model.target_path in valid_paths, (
                 f"Invalid target_path '{model.target_path}' for {model.filename}"
+            )
 
 
 class TestKnownModelsDatabase:
@@ -195,8 +203,7 @@ class TestKnownModelsDatabase:
         from addons.workflow_manager.url_database import KNOWN_MODELS
 
         for key, model in KNOWN_MODELS.items():
-            assert key == model.filename, \
-                f"Key '{key}' doesn't match filename '{model.filename}'"
+            assert key == model.filename, f"Key '{key}' doesn't match filename '{model.filename}'"
 
     def test_no_duplicate_urls(self):
         """Each model should have a unique URL."""

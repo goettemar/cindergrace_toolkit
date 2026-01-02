@@ -28,7 +28,6 @@ from core.addon_loader import AddonLoader
 from core.config_manager import ConfigManager
 from core.profile_sync import ProfileSyncService
 
-
 # === Settings Store ===
 
 SETTINGS_DIR = Path(__file__).parent / ".config"
@@ -39,7 +38,7 @@ def _load_app_settings() -> dict:
     """Load app settings from file."""
     if SETTINGS_FILE.exists():
         try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            with open(SETTINGS_FILE, encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             pass
@@ -148,6 +147,7 @@ damages, losses, or expenses (including legal fees) arising from:
 
 # === Disk Info ===
 
+
 def _get_disk_info(config: ConfigManager) -> str:
     """Get disk space info for relevant paths."""
     import shutil
@@ -247,7 +247,6 @@ def create_app(release: str, profile_url: str = "") -> gr.Blocks:
 
     # Build Gradio UI
     with gr.Blocks(title="Cindergrace Toolkit") as app:
-
         # === DISCLAIMER VIEW (shown if not accepted) ===
         with gr.Column(visible=not disclaimer_accepted) as disclaimer_view:
             gr.Markdown(
@@ -273,12 +272,11 @@ def create_app(release: str, profile_url: str = "") -> gr.Blocks:
 
         # === MAIN APP VIEW (shown after acceptance) ===
         with gr.Column(visible=disclaimer_accepted) as main_view:
-
             # Header
             gr.Markdown(
                 f"""
                 # Cindergrace Toolkit
-                **Release:** {release_config.get('name', release)} v{release_config.get('version', '1.0.0')}
+                **Release:** {release_config.get("name", release)} v{release_config.get("version", "1.0.0")}
                 """
             )
 
@@ -302,8 +300,8 @@ def create_app(release: str, profile_url: str = "") -> gr.Blocks:
                 gr.Markdown(f"""
                 **System:**
                 - **Environment:** {config.get_environment()}
-                - **ComfyUI:** {comfy_path or 'Not found'}
-                - **Remote Profiles:** {'Enabled' if remote_config.get('enabled') else 'Disabled'}
+                - **ComfyUI:** {comfy_path or "Not found"}
+                - **Remote Profiles:** {"Enabled" if remote_config.get("enabled") else "Disabled"}
                 - **Terms Accepted:** {disclaimer_date}
 
                 **Storage:**
@@ -320,7 +318,7 @@ def create_app(release: str, profile_url: str = "") -> gr.Blocks:
             # Return updates to hide disclaimer and show main view
             return (
                 gr.update(visible=False),  # Hide disclaimer
-                gr.update(visible=True),   # Show main view
+                gr.update(visible=True),  # Show main view
                 f"Accepted on {acceptance_date}",
             )
 
@@ -341,12 +339,14 @@ def create_app(release: str, profile_url: str = "") -> gr.Blocks:
 def main():
     parser = argparse.ArgumentParser(description="Cindergrace Toolkit")
     parser.add_argument(
-        "--release", "-r",
+        "--release",
+        "-r",
         default="",
         help="Release configuration to load (full, runpod, minimal)",
     )
     parser.add_argument(
-        "--port", "-p",
+        "--port",
+        "-p",
         type=int,
         default=7861,
         help="Port to run on (default: 7861)",
@@ -390,11 +390,11 @@ def main():
     if config.is_runpod():
         launch_kwargs["server_name"] = "0.0.0.0"
         launch_kwargs["share"] = False  # RunPod has its own proxy
-        print(f"[Toolkit] RunPod mode: server_name=0.0.0.0, share=False")
+        print("[Toolkit] RunPod mode: server_name=0.0.0.0, share=False")
     elif config.is_colab():
         launch_kwargs["server_name"] = "0.0.0.0"
         launch_kwargs["share"] = True  # Colab needs share for public access
-        print(f"[Toolkit] Colab mode: server_name=0.0.0.0, share=True")
+        print("[Toolkit] Colab mode: server_name=0.0.0.0, share=True")
 
     # Try to find an available port
     import socket
