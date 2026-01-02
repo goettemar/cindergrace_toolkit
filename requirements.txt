@@ -2,7 +2,7 @@
 # Aktualisiert: 2026-01-02 (Security Fixes)
 
 # Core
-gradio>=5.11.0
+gradio>=5.31.0
 
 # Optional: For faster downloads
 # aiohttp>=3.9.0

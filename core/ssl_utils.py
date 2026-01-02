@@ -38,7 +38,7 @@ def get_ssl_context(config_dir: Path | None = None) -> ssl.SSLContext:
                     config = json.load(f)
                     disable_ssl = config.get("security", {}).get("disable_ssl_verify", False)
                     break
-            except Exception:
+            except (json.JSONDecodeError, OSError):
                 pass
 
     if disable_ssl:

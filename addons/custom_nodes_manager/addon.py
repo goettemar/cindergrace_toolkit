@@ -347,7 +347,7 @@ class CustomNodesManagerAddon(BaseAddon):
                 content = sync_log.read_text(encoding="utf-8").strip()
                 if content:
                     logs.append("=== Sync Errors ===\n" + content)
-            except Exception:
+            except OSError:
                 pass
 
         startup_log = self.LOGS_DIR / "startup_errors.log"
@@ -356,7 +356,7 @@ class CustomNodesManagerAddon(BaseAddon):
                 content = startup_log.read_text(encoding="utf-8").strip()
                 if content:
                     logs.append("=== Startup Errors ===\n" + content)
-            except Exception:
+            except OSError:
                 pass
 
         if not logs:

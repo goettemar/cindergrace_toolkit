@@ -39,7 +39,7 @@ def log_error(node_name: str, operation: str, error_msg: str) -> None:
     try:
         with open(ERROR_LOG, "a", encoding="utf-8") as f:
             f.write(log_line)
-    except Exception:
+    except OSError:
         pass
 
 
