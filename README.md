@@ -1,5 +1,7 @@
 # Cindergrace Toolkit
 
+> Hinweis: Dieses Repository ist ein Hobby-/Experimentierprojekt. Es handelt sich nicht um ein gewerbliches Angebot (keine Auftragsannahme, keine Garantien, kein Supportversprechen).
+
 Modulares Gradio-Toolkit für ComfyUI - Workflow-basierte Modellverwaltung, Custom Nodes und Workflow-Sync.
 
 ## Features
