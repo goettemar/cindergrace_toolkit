@@ -14,6 +14,11 @@
       "name": "ComfyUI-Florence2",
       "enabled": true,
       "description": "Image analysis with Florence2"
+    },
+    {
+      "name": "comfyui_essentials",
+      "description": "Restored from disk",
+      "enabled": false
     }
   ]
 }
