@@ -34,3 +34,8 @@ profiles/.cache/
 .pytest_cache/
 htmlcov/
 coverage.xml
+
+# AI Tooling (internal development files)
+CLAUDE.md
+AGENTS.md
+.ki-faq.json
